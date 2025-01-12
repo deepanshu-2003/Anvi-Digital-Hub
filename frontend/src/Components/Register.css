@@ -1,0 +1,200 @@
+/* General container styling */
+.register-container {
+  background: linear-gradient(120deg, #1e1e1e, #0a4cb8);
+  padding: 2.5rem;
+  border-radius: 15px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  max-width: 650px;
+  color: #f8f8f8;
+  font-family: 'Roboto', sans-serif;
+  margin: 4rem auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  animation: fadeIn 0.8s ease-in-out;
+  margin-top: 12px;
+}
+
+.register-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.register-container .row {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.row .form-group {
+  flex: 1;
+}
+.register-container .row {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  align-items: center; /* Align items vertically */
+}
+
+.verification {
+  padding: 0.8rem;
+  background: hsl(199, 71%, 40%);
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  margin-bottom: 0px; /* Push button to the bottom of the container */
+  cursor: pointer;
+  transition: background 0.3s ease;
+  width: auto; /* Adjust width as needed */
+  /* align-self: center;  Center-align button within its container */
+}
+.verification:hover {
+  background: #000000;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+label {
+  font-weight: 500;
+  color: #ccc;
+}
+
+input,
+select {
+  padding: 0.8rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  background-color: #333644;
+  color: #fff;
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+input::placeholder {
+  color: #999;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  background-color: #1d1f29;
+  color:whitesmoke;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.7);
+}
+
+.register-button {
+  width: 100%;
+  padding: 0.9rem;
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.register-button:hover {
+  background: linear-gradient(90deg, #2563eb, #1d4ed8);
+  transform: scale(1.03);
+}
+
+.navigation-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.navigation-buttons button {
+  flex: 1;
+  padding: 0.8rem;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.navigation-buttons button:hover {
+  background: #1d4ed8;
+}
+
+
+.google-login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px; /* Adjust spacing as needed */
+}
+.form-group {
+  position: relative; /* Added for absolute positioning of the icon */
+}
+
+.username-availability-icon {
+  position: absolute;
+  right: 10px; /* Align to the right of the input field */
+  top: 50%; /* Center vertically */
+  transform: translateY(-50%);
+  pointer-events: none; /* Prevent interactions */
+}
+
+/* Adjusting Verification buttons */
+/* .verification-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 15%;
+} */
+
+.login-link {
+  text-align: center;
+  margin-top: 1.5rem;
+  color: #d8dfe0;
+}
+
+.login-link span {
+  color: #d8dfe0;
+  cursor: pointer;
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.login-link span:hover {
+  color: #ffffff;
+}
+
+@media (max-width: 768px) {
+  .row {
+    flex-direction: column;
+  }
+  .register-container {
+    max-width: 450px;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+

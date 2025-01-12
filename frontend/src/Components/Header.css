@@ -1,0 +1,241 @@
+/* General Header Styles */
+body{
+  margin-left: auto;
+  margin-top: 66px;
+  width: 100%;
+
+}
+html, body {
+    overflow-x: hidden; /* Prevent horizontal scrolling */
+    overflow-y: auto; /* Allow vertical scrolling */
+}
+.custom-header {
+position: fixed;
+top: 0;
+left:0;
+width: 100%;
+height:auto;
+z-index: 1000;
+background: linear-gradient(90deg, #050505, #2f0fe6); 
+box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.navbar-brand .logo {
+margin-left:20px;
+height: 40px;
+width: 40px;
+}
+
+/* Navigation Link Styles */
+.nav-link {
+transition: all 0.3s ease;
+font-weight: bold;
+font-size: 1rem;
+color: rgba(255, 255, 255, 0.8);
+padding: 8px 16px;
+border-radius: 4px;
+}
+
+.nav-link.active,
+.nav-link:hover {
+color: gold !important;
+text-shadow: 0 0 8px rgba(255, 215, 0, 0.8); /* Glow effect for gold */
+background-color: rgba(255, 255, 255, 0.1); /* Subtle hover background */
+}
+
+/* User Section Styles */
+.user-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  }
+  
+  .user-section .user-btn {
+  background-color: transparent;
+  color: white;
+  font-weight: bold;
+  border: none;
+  font-size: 1rem;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+  padding: 8px 16px;
+  border-radius: 4px;
+  }
+  
+  .user-section .user-btn:hover {
+  color: gold;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+  }
+  
+  /* Dropdown Menu Styles */
+  .user-dropdown {
+  background-color: #1e1e2d;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
+  
+  .user-dropdown .dropdown-item {
+  color: white;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  }
+  
+  .user-dropdown .dropdown-item:hover {
+  background-color: transparent;
+  color: gold;
+  /* box-shadow: 0 0 8px rgba(255, 215, 0, 0.8); */
+  }
+
+/* Login Button Specific Styles */
+.login-btn {
+  background-color: transparent;
+  color: gold;
+  font-weight: bold;
+  /* text-align: center; */
+  padding: 8px 16px;
+  /* border: 2px solid gold; */
+  /* border-radius: 4px; */
+  transition: all 0.3s ease;
+  }
+  
+/* .login-btn:hover { */
+/* color: gold;
+background-color: rgb(31, 2, 2);
+box-shadow: 0 0 8px rgba(250, 250, 250, 0.8); */
+/* s} */
+
+/* Username Display */
+.username {
+  font-weight: bold;
+  color: gold;
+  font-size: 1rem;
+  text-transform: capitalize;
+  text-shadow: 0 0 6px rgba(255, 215, 0, 0.6);
+  } 
+  
+/* Mobile Menu Toggle */ 
+.navbar-toggler {
+  border-color: rgb(21, 17, 80);
+  color: rgb(90, 110, 221);
+  background-color: rgb(255, 255, 255);
+  margin-right: 0px;
+  margin-left: 20px;
+  }
+  
+  .navbar-toggler-icon {
+  background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23ffffff' viewBox='0 0 30 30'%3E%3Cpath stroke='rgba%280, 0, 0, 0.5%29' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3E%3C/svg%3E");
+  }
+  
+  /* Dropdown Divider (Optional) */
+  .user-dropdown .dropdown-divider {
+  border-color: rgb(241, 238, 238);
+  }
+  
+/* Offcanvas Menu Styles */
+.offcanvas-start {
+  /* display:none; */
+  width: 250px; /* Set an appropriate width */
+  max-width: 80%; /*  Ensure it doesn't exceed 80% of the screen width */
+  background-color: #1e1e2d; /*Optional background color for clarity*/
+  height: 100%;  /*  Full height */
+  overflow-y: auto;  /* Enable scrolling if content overflows */
+  transition: transform 0.3s ease-in-out; /* Smooth open/close animation */
+  /* box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); */
+  }
+  
+  /* Offcanvas Header */
+  .offcanvas-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  /* background-color: #1e1e2d; Match the offcanvas body */
+  padding: 10px 20px; /* Adjust padding */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  
+  /* Offcanvas Body */
+  .offcanvas-body {
+  padding: 20px;
+  color: white;
+  font-size: 1rem;
+  /* line-height: 1.5;  */
+  }
+  
+  /* Offcanvas Title */
+  .offcanvas-title {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: gold;
+  }
+  
+  .btn-close {
+  /* background: none; */
+  border: none;
+  background-color: white;
+  font-size: 1.5rem;
+  color: #000;
+  }
+
+  
+.error-messages,
+.success-message {
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.error-messages {
+  background-color: rgba(255, 0, 0, 0.1);
+  color: #ff4c4c;
+}
+
+.success-message {
+  background-color: rgba(0, 255, 0, 0.1);
+  color: #4caf50;
+}
+
+/* Media Queries for Mobile Responsiveness */
+@media (max-width: 800px) {
+  body{
+   width: 100%;
+   align-items: center ;
+   margin-top:106px;
+  }
+   .navbar {
+     /* flex-direction: column; Stack items vertically */
+     align-items: right; /* Center the logo */
+   }
+   
+   .navbar-brand {
+     order: 1; /* Ensure logo is at the center */
+     /* margin: auto; */
+     margin-right:30px;
+     align-items: right;
+   }
+   
+   .navbar-toggler {
+     order:1; /* Toggler appears before the user section */
+     align-self: flex-start; /* Align toggler to the left */
+     margin-left: 20px; /* Add some spacing */
+   }
+   
+   .user-section {
+     order: 1; /* User section comes in the next line */
+     /* margin-top: 10px; */
+     width: 100%; /* Take full width */
+     display: flex;
+     justify-content: flex-end; /* Align to the right */
+     padding-right: 20px; /* Add some spacing on the right */
+   }
+   
+   .user-btn {
+     width: auto; /* Adjust width for proper alignment */
+     text-align: right;
+   }
+   }
+   

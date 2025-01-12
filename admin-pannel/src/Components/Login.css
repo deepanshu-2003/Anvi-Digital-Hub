@@ -1,0 +1,115 @@
+/* Login Styles */
+
+.login-container {
+  background: linear-gradient(135deg, #000000, #2222ff);
+  padding: 2.5rem;
+  border-radius: 15px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  width: 100%;
+  max-width: 450px;
+  color: #f8f8f8;
+  font-family: 'Roboto', sans-serif;
+  margin: 6rem auto;
+}
+
+.login-title {
+  font-size: 2rem;
+  /* margin-top: 100px; */
+  font-weight: 700;
+  margin-bottom: 2rem;
+  text-align: center;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+label {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  display: block;
+  color: #ccc;
+}
+
+input {
+  width: 100%;
+  padding: 0.9rem 2.5rem 0.9rem 0.9rem; /* Add padding-right for the icon */
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  background-color: #333644;
+  color: #fff;
+  transition: all 0.3s ease;
+}
+
+input::placeholder {
+  color: #999;
+}
+
+input:focus {
+  outline: none;
+  background-color: #444759;
+  box-shadow: 0 0 8px rgba(0, 188, 212, 0.7);
+}
+
+.password-group {
+  position: relative;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  background: none;
+  border: none;
+  color: #a9ffff;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.toggle-password i {
+  pointer-events: none; /* Disable pointer events on the icon */
+}
+
+.toggle-password:hover {
+  color: #ffffff;
+}
+
+.login-button {
+  width: 100%;
+  padding: 0.9rem;
+  background: linear-gradient(90deg, #00acc1, #008394);
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.login-button:hover {
+  background: linear-gradient(90deg, #008394, #007684);
+  transform: translateY(-2px);
+}
+
+
+.register-link {
+  text-align: center;
+  margin-top: 1.5rem;
+}
+
+.register-link span { 
+  color: #d8dfe0;
+  cursor: pointer;
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.register-link span:hover {
+  color: #ffffff;
+}

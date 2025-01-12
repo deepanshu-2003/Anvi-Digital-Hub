@@ -1,0 +1,74 @@
+.message-container {
+    position: fixed;
+    top: 0;
+    right: 20px; /* Adjust spacing from the right edge */
+    transform: translateY(0); /* No horizontal shift needed for right alignment */
+    width: auto; /* Adjust width dynamically based on content */
+    min-width: 300px; /* Ensure it doesn't shrink too much */
+    z-index: 1000;
+    padding: 22px 40px; /* Increased right padding to accommodate the close button */
+    margin-top: 70px; /* Space below the header */
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    font-size: 1rem;
+    font-weight: bold;
+    text-align: center; /* Align text to the center */
+    animation: fadeInOut 0.5s ease-in-out;
+}
+
+/* Message Type Colors */
+.message-container.info {
+    background-color: #2196f3;
+    color: #ffffff;
+}
+
+.message-container.success {
+    background-color: #4caf50;
+    color: #ffffff;
+}
+
+.message-container.warning {
+    background-color: #ff9800;
+    color: #ffffff;
+}
+
+.message-container.error {
+    background-color: #f44336;
+    color: #ffffff;
+}
+
+.close-button {
+    position: absolute;
+    top: 22px;
+    right: 8px;
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #fff;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.close-button:hover {
+    color: #000000; /* Change to a contrasting color on hover */
+}
+
+/* Animation */
+@keyframes fadeInOut {
+    from {
+        opacity: 0;
+        transform: translateY(-20%);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive Adjustments */
+@media (max-width: 800px) {
+    .message-container {
+        margin-top: 110px; /* Ensure proper spacing for mobile headers */
+    }
+}
