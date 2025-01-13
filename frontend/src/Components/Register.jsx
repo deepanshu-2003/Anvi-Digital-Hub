@@ -112,7 +112,7 @@ const Register = () => {
 
       if (!response.ok) {
         const errorMsg = data.errors
-          ? data.errors.map((err) => err.msg).join(", ")
+          ? data.errors[data.errors.length - 1].msg // Get only the last message
           : data.error || "Registration failed. Please try again.";
         setMessage({ type: "error", text: errorMsg });
         return;
@@ -120,9 +120,11 @@ const Register = () => {
 
       setMessage({
         type: "success",
-        text: "Registration successful! Redirecting to login...",
+        text: "Registration successful.",
       });
-      setTimeout(() => navigate("/login"), 3000);
+      // console.log(data.auth_token);
+      localStorage.setItem('auth_token',data.auth_token);
+      navigate("/");
     } catch (err) {
       console.error("Error during registration:", err.message);
       setMessage({ type: "error", text: err.message });

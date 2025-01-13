@@ -6,6 +6,9 @@ const fetchUser = require("../middleware/fetch_user");
 const { body, validationResult } = require("express-validator");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
+const Verify = require("../models/verification");
+
 const JWT_SECRET = process.env.JWT_SECRET; // Use environment variable for production
 const { OAuth2Client, auth } = require("google-auth-library");
 
@@ -20,8 +23,8 @@ const BASE_URL = process.env.BASE_URL;
 router.post(
   "/create-user",
   [
-    body("first_name","please Enter a valid name").isEmpty().isLength({min:1,max:20  }),
-    body("last_name","please Enter a valid name").isEmpty().isLength({min:1,max:20  }),
+    body("first_name","please Enter a valid name").notEmpty().isLength({min:1,max:20  }),
+    body("last_name","please Enter a valid name").notEmpty().isLength({min:1,max:20  }),
     body("username", "Username must be at least 3 characters long").isLength({
       min: 3,
     }),
@@ -363,7 +366,149 @@ router.post("/get-user", fetchUser, async (req, res) => {
 
 
 // ----------------------------Email Verification ---------------------------------
+const transporter = nodemailer.createTransport({
+  service: "Gmail", // or another email provider
+  port:465,
+  auth: {
+    user: EMAIL_USER,
+    pass: EMAIL_PASS,
+  },
+});
 // ----------------------------Sending Email --------------------------------------
+// random user id generation----------------------------------------------
+function generateRandomUsername() {
+  const adjectives = [
+    "Brave",
+    "Clever",
+    "Witty",
+    "Happy",
+    "Gentle",
+    "Quick",
+    "Bright",
+    "Bold",
+    "Calm",
+    "Lively",
+  ];
+  const nouns = [
+    "Lion",
+    "Tiger",
+    "Panda",
+    "Falcon",
+    "Fox",
+    "Eagle",
+    "Bear",
+    "Wolf",
+    "Dragon",
+    "Shark",
+  ];
+
+  // Generate random indices
+  const randomAdjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
+  const randomNumber = Math.floor(Math.random() * 10000); // Random number from 0 to 9999
+
+  // Combine parts to form a username
+  return `${randomAdjective}${randomNoun}${randomNumber}`;
+}
+
+
+
+
+// endpoint for sending verification mail
+// Endpoint for sending verification email
+router.post("/send-verification", [
+  body("email", "Enter a valid email.").isEmail()
+], async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: "Email is required." });
+  }
+
+  try {
+    // Check if the email already exists in the verification database
+    let user = await Verify.findOne({ email });
+    let userId;
+
+    if (user) {
+      // Fetch existing userId
+      userId = user.userId;
+    } else {
+      // Generate a new userId for a new email
+      userId = generateRandomUsername();
+
+      // Save the new email and userId to the database
+      user = new Verify({
+        userId,
+        email,
+        verified: false,
+        mobile_verified: false,
+        mobile: '', 
+      });
+
+      await user.save();
+    }
+
+    // Create a token for verification
+    const token = jwt.sign({ userId }, EMAIL_SECRET, { expiresIn: "1h" });
+
+    // Verification link
+    const verificationLink = `${BASE_URL}/auth/verify-email?token=${token}`;
+
+    // Email options
+    const mailOptions = {
+      from: EMAIL_USER,
+      to: email,
+      subject: "Email Verification",
+      html: `
+        <p>Click the link below to verify your email address:</p>
+        <a href="${verificationLink}">Verify Email</a>
+        <p>This link is valid for 1 hour.</p>
+      `,
+    };
+
+    // Send the email
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({ message: "Verification email sent successfully." });
+  } catch (error) {
+    console.error("Error sending email:", error);
+    res.status(500).json({ error: "Failed to send verification email." });
+  }
+});
+
+//-------------------verifying email ----------------------------------------
+// Endpoint for verifying email
+router.get("/verify-email", async (req, res) => {
+  const { token } = req.query;
+  if (!token) {
+    return res.status(400).json({ error: "Invalid or missing token." });
+  }
+
+  try {
+    // Verify the token
+    const decoded = jwt.verify(token, EMAIL_SECRET);
+    const { userId } = decoded;
+
+    // Find the user in the database
+    const user = await Verify.findOne({ userId });
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    // Update the user's verification status
+    if(user.email_verified){
+      return res.status(200).json({ message: "Email already verified.", status: "active" });
+    }
+    user.email_verified = true;
+    await user.save();
+
+    return res.status(200).json({ message: "Email verified successfully.", status: "active" });
+  } catch (error) {
+    console.error("Error verifying email:", error);
+    return res.status(400).json({ error: "Invalid or expired token." });
+  }
+});
 
 
 // ----------------------------Mobile Verification ---------------------------------
