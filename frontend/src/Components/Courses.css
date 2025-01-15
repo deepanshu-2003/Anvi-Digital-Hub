@@ -1,0 +1,12 @@
+.course-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 400px; /* Adjust the min height as needed */
+  }
+  
+  .card-body {
+    display: flex;
+    flex-direction: column;
+  }
+  

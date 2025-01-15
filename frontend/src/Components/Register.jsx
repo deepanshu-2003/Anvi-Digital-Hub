@@ -22,20 +22,72 @@ const Register = () => {
     mobile: "",
     password: "",
     confirm_password: "",
-    address_line1: "",
-    address_line2: "",
-    city: "",
-    state: "",
-    postal_code: "",
   });
+
   const [currentPhase, setCurrentPhase] = useState(1); // Track the current phase
   const [recaptchaToken, setRecaptchaToken] = useState(null);
   const { message, setMessage } = useContext(MessageContext);
   const [usernameAvailable, setUsernameAvailable] = useState(false);
+  const [emailVerification, setEmailVerification] = useState(false); // clicked on verification button
+  const [emailVerified,setEmailVerified] = useState(false);
+  const [timer, setTimer] = useState(0);
   const navigate = useNavigate();
+  let timerInterval = null;
 
+  const startTimer = () => {
+    setTimer(30); // 30 seconds countdown
+    clearInterval(timerInterval); // Clear existing timer if any
+    timerInterval = setInterval(() => {
+      setTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerInterval); // Stop timer
+          setTimer(0); // Reset timer
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
-  const verifyEmail = async () => {};
+  // Email Verification function .................
+  const verifyEmail = async () => {
+    const email = formData.email;
+    if (!email) {
+      setMessage({ type: "error", text: "Enter a valid email" });
+      return;
+    }
+    try {
+      setEmailVerification(true);
+      startTimer();
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/auth/send-verification`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        setMessage({
+          type: "error",
+          text: data.errors[0].msg || "Error sending verification mail.",
+        });
+        setEmailVerification(false);
+        return;
+      }
+      if(data.message === "Email Verified successfuly."){
+        setEmailVerified(true);
+        setEmailVerification(false);
+      }
+      setMessage({ type: "success", text: data.message });
+    } catch (err) {
+      setMessage({ type: "error", text: "Error sending verification mail." });
+      setEmailVerification(false);
+      console.error("Error hitting End point:", err.message);
+    }
+  };
+
+  // Verification of mobile number............
   const verifyMobile = async () => {};
 
   const checkUsernameAvailability = async (username) => {
@@ -77,6 +129,11 @@ const Register = () => {
   };
 
   const handleChange = (e) => {
+    if (e.target.name === "email" && emailVerification) {
+      if(timer===0){
+        setEmailVerification(false);
+      }else{return;}
+    }
     setFormData({ ...formData, [e.target.name]: e.target.value });
     if (e.target.name === "username" && e.target.value.length > 2) {
       checkUsernameAvailability(e.target.value);
@@ -123,7 +180,7 @@ const Register = () => {
         text: "Registration successful.",
       });
       // console.log(data.auth_token);
-      localStorage.setItem('auth_token',data.auth_token);
+      localStorage.setItem("auth_token", data.auth_token);
       navigate("/");
     } catch (err) {
       console.error("Error during registration:", err.message);
@@ -213,16 +270,42 @@ const Register = () => {
                 />
               </div>
               <div className="form-group">
-              <label
-                  htmlFor="verification"
-                 >Verify Email ID </label>
-                <button type="button" className="btn btn-secondary verification" onClick={verifyEmail} >Verify Email</button>
+                <label htmlFor="verification">Verify Email ID </label>
+                {/* Verification button */}
+                {!emailVerification ? (
+                  <button
+                    type="button"
+                    className="btn btn-secondary verification"
+                    onClick={verifyEmail}
+                  >
+                    Verify Email
+                  </button>
+                ) : (
+                  <>
+                    {emailVerification && timer > 0 && (
+                      <span className="timer-message">Resend in {timer}s</span>
+                    )}
+                    {emailVerification && timer === 0 && (
+                      <>
+                        <button
+                          type="button"
+                          className="btn btn-secondary verification"
+                          onClick={verifyEmail}
+                        >
+                          Resend Email
+                        </button>
+                        {/* <button type="button" className="btn btn-secondary verification" onClick={()=>{
+                          setEmailVerification(false);
+                        }}>Change Email</button> */}
+                      </>
+                    )}
+                  </>
+                )}
               </div>
-             
             </div>
             {/* Verify email and mobile button  */}
             <div className="row">
-            <div className="form-group">
+              <div className="form-group">
                 <label htmlFor="mobile">Mobile</label>
                 <input
                   type="tel"
@@ -235,10 +318,14 @@ const Register = () => {
                 />
               </div>
               <div className="form-group">
-                <label
-                  htmlFor="verification"
-                 >Verify Mobile Number</label>
-                <button type="button" className="btn btn-secondary verification" onClick={verifyMobile}>Verify Mobile</button>
+                <label htmlFor="verification">Verify Mobile Number</label>
+                <button
+                  type="button"
+                  className="btn btn-secondary verification"
+                  onClick={verifyMobile}
+                >
+                  Verify Mobile
+                </button>
               </div>
             </div>
           </>

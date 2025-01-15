@@ -1,22 +1,24 @@
 import React, { useEffect, useState } from "react";
 import Header from "./Header";
-import { Button } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
+import "./Courses.css";
 
 const Courses = () => {
   const [courses, setCourses] = useState([]);
 
-  // Fetch courses from the backend using POST
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/course/get/`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({}),
-        });
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/course/get/`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({}),
+          }
+        );
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -32,6 +34,24 @@ const Courses = () => {
     fetchCourses();
   }, []);
 
+  const renderStars = (rating) => {
+    const fullStars = Math.floor(rating);
+    const halfStar = rating % 1 !== 0;
+    const emptyStars = 5 - Math.ceil(rating);
+
+    return (
+      <>
+        {[...Array(fullStars)].map((_, index) => (
+          <i key={index} className="fas fa-star text-warning"></i>
+        ))}
+        {halfStar && <i className="fas fa-star-half-alt text-warning"></i>}
+        {[...Array(emptyStars)].map((_, index) => (
+          <i key={index} className="far fa-star text-warning"></i>
+        ))}
+      </>
+    );
+  };
+
   return (
     <>
       <Header />
@@ -43,16 +63,21 @@ const Courses = () => {
               const discountedPrice =
                 course.course_price - course.course_discount;
               const discountPercentage = (
-                (course.course_discount / course.course_price) *
-                100
-              ).toFixed(0); // Calculate and round off the percentage
+                (course.course_discount / course.course_price) * 100
+              ).toFixed(0);
+
+              const handleCardClick = () => {
+                console.log(`Clicked on course: ${course.course_name}`);
+              };
 
               return (
-                <div className="col-md-4 mb-4" key={course._id}>
-                  <div
-                    className="card h-100 border-0 shadow-sm"
-                    style={{ borderRadius: "10px", overflow: "hidden" }}
-                  >
+                <div
+                  className="col-lg-3 col-md-4 col-sm-6 col-12 mb-4"
+                  key={course._id}
+                  onClick={handleCardClick}
+                  style={{ cursor: "pointer" }}
+                >
+                  <div className="card course-card h-100 border-0 shadow-sm">
                     <img
                       src={
                         course.course_img !== "Please enter a course image"
@@ -61,37 +86,55 @@ const Courses = () => {
                       }
                       className="card-img-top"
                       alt={course.course_name}
-                      style={{ height: "300px", objectFit: "cover" }}
+                      style={{ height: "150px", objectFit: "cover" }}
                     />
                     <div className="card-body d-flex flex-column">
-                      <h5 className="card-title text-dark">{course.course_name}</h5>
-                      <p className="card-text text-muted">{course.course_desc}</p>
+                      <h5 className="card-title text-dark">
+                        {course.course_name}
+                      </h5>
                       <p className="card-text text-muted">
-                        Duration: <span className="fw-bold">{course.course_duration}</span>
+                        {course.course_desc}
+                      </p>
+                      <p className="card-text text-muted">
+                        Duration:{" "}
+                        <span className="fw-bold">
+                          {course.course_duration}
+                        </span>
+                      </p>
+                      <div className="mb-2">{renderStars(course.averageRating)}</div>
+                      <p className="card-text text-muted">
+                        Rating:{" "}
+                        <span className="fw-bold">
+                          {course.averageRating
+                            ? course.averageRating.toFixed(1)
+                            : "No ratings yet"}{" "}
+                          ({course.totalReviews}{" "}
+                          {course.totalReviews === 1 ? "review" : "reviews"})
+                        </span>
                       </p>
                       <div className="mt-auto">
-                        <p className="text-danger mb-0 fw-bold" style={{ fontSize: "16px" }}>
+                        <p
+                          className="text-danger mb-0 fw-bold"
+                          style={{ fontSize: "14px" }}
+                        >
                           <s>Rs. {course.course_price}/-</s>
                         </p>
                         <p
                           className="text-success fw-bold"
-                          style={{ fontSize: "20px" }}
+                          style={{ fontSize: "18px" }}
                         >
                           Rs. {discountedPrice}/-{" "}
                           <span className="badge bg-success ms-4">
                             {discountPercentage}% OFF
                           </span>
                         </p>
-                        <Button
-                          variant="success"
-                          className="w-100 mt-2"
-                          style={{
-                            fontWeight: "bold",
-                            letterSpacing: "1px",
-                          }}
-                        >
-                          Join Now
-                        </Button>
+                        <p className="text-muted mb-0">
+                          {course.course_label ? (
+                            <span className="badge bg-primary">
+                              {course.course_label}
+                            </span>
+                          ) : null}
+                        </p>
                       </div>
                     </div>
                   </div>

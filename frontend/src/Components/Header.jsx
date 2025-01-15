@@ -1,92 +1,86 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { MessageContext } from "../Context/MessageContext";
-import { useContext } from "react";
 import "./Header.css";
 import Message from "./Message";
-// Header will take message as props and display it
+import axios from "axios";
+
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { message, setMessage } = useContext(MessageContext);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState(
-    localStorage.getItem("user") || "Guest User"
-  );
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [user, setUser] = useState({
+    name: localStorage.getItem("user") || "Guest User",
+    profileImg: localStorage.getItem("profile_img") || null,
+  });
+  const [initialized, setInitialized] = useState(false);
 
-  const validateToken = async () => {
-    const token = localStorage.getItem("auth_token");
-    if (!token) {
-      handleLogout(); // If no token, log out the user
-      return false;
-    }
-
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/auth/validate-token`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ auth_token: token }),
-        }
-      );
-
-      if (!response.ok) {
-        handleLogout(); // Invalid token, log out the user
+  useEffect(() => {
+    const validateToken = async () => {
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        handleLogout();
         return false;
       }
 
-      const data = await response.json();
-      console.log("Token validated:", data);
-      return true; // Token is valid
-    } catch (error) {
-      console.error("Error validating token:", error);
-      handleLogout(); // On error, log out the user
-      return false;
-    }
-  };
+      try {
+        const response = await axios.post(
+          `${import.meta.env.VITE_BACKEND_URL}/auth/validate-token`,
+          { auth_token: token }
+        );
 
-  const fetchUsername = async () => {
-    const token = localStorage.getItem("auth_token");
-    if (!token) {
-      setUser("Guest User");
-      localStorage.setItem("user", "Guest User");
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/auth/get-user`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            auth_token: token,
-          },
+        if (response.status !== 200) {
+          handleLogout();
+          return false;
         }
-      );
 
-      if (!response.ok) {
+        console.log("Token validated:", response.data);
+        return true;
+      } catch (error) {
+        console.error("Error validating token:", error);
+        handleLogout();
+        return false;
+      }
+    };
+
+    const fetchUserDetails = async () => {
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        setUser({ name: "Guest User", profileImg: null });
         localStorage.setItem("user", "Guest User");
-        throw new Error(`Error: ${response.status}`);
+        localStorage.setItem("profile_img", null);
+        return;
       }
 
-      const { first_name, last_name } = await response.json();
-      const username = `${first_name} ${last_name}`;
-      setUser(username);
-      localStorage.setItem("user", username);
-    } catch (error) {
-      console.error("Error fetching username:", error);
-      setUser("Guest User");
-      localStorage.setItem("user", "Guest User");
-    }
-  };
+      try {
+        const response = await axios.post(
+          `${import.meta.env.VITE_BACKEND_URL}/auth/get-user`,
+          {},
+          { headers: { auth_token: token } }
+        );
 
+        if (response.status !== 200) {
+          throw new Error(`Error: ${response.status}`);
+        }
 
-  useEffect(() => {
+        const { first_name, last_name, profile_img, email_verified } =
+          response.data;
+        const username = `${first_name} ${last_name}`;
+        setUser({ name: username, profileImg: profile_img });
+        setIsEmailVerified(email_verified);
+        localStorage.setItem("user", username);
+        localStorage.setItem("profile_img", profile_img);
+      } catch (error) {
+        console.error("Error fetching user details:", error);
+        setUser({ name: "Guest User", profileImg: null });
+        localStorage.setItem("user", "Guest User");
+        localStorage.setItem("profile_img", null);
+      }
+    };
+
     const initializeUser = async () => {
       const isValidToken = await validateToken();
       if (!isValidToken) return;
@@ -94,31 +88,30 @@ const Header = () => {
       const token = localStorage.getItem("auth_token");
       setIsLoggedIn(!!token);
 
-      const username = localStorage.getItem("user");
-      if (!username) {
-        fetchUsername();
-        console.log("Fetching username");
-      } else {
-        setUser(username);
+      if (!localStorage.getItem("user")) {
+        fetchUserDetails();
+        console.log("Fetching user details");
       }
     };
 
-    initializeUser();
-  }, []);
+    if (!initialized) {
+      initializeUser().then(() => setInitialized(true));
+    }
+  }, [initialized]);
 
   const handleLogout = () => {
     localStorage.clear();
     setIsLoggedIn(false);
-    setUser("Guest User");
-    // navigate('/');
+    setUser({ name: "Guest User", profileImg: null });
+    setInitialized(false);
   };
 
   const isActive = (path) => location.pathname === path;
 
   return (
     <>
-      <header className="custom-header text-white shadow-sm">
-        <nav className="navbar navbar-expand-lg navbar-dark container py-2">
+      <header className="custom-header text-white shadow-sm py-1  ">
+        <nav className="navbar navbar-expand-lg navbar-dark container py-1">
           <button
             className="navbar-toggler me-3"
             type="button"
@@ -142,7 +135,7 @@ const Header = () => {
             data-bs-scroll="true"
           >
             <div className="offcanvas-header">
-              <h5 className="offcanvas-title">Menu</h5>
+              <h5 className="offcanvas-title">Anvi Digital Hub</h5>
               <button
                 className="btn-close"
                 data-bs-dismiss="offcanvas"
@@ -168,29 +161,50 @@ const Header = () => {
               </ul>
             </div>
           </div>
+
           <div className="d-flex align-items-center ms-lg-4 user-section">
-            <div className="dropdown">
+            {" "}
+            <div className="dropdown me-4">
+              {" "}
               <button
                 className="btn user-btn dropdown-toggle"
                 type="button"
                 id="userDropdown"
                 data-bs-toggle="dropdown"
               >
-                {user}
-              </button>
-              <ul className="dropdown-menu user-dropdown">
+                {" "}
+                {isLoggedIn ? (
+                  <img
+                    src={user.profileImg}
+                    alt="Profile"
+                    className="profile-header"
+                  />
+                ) : (
+                  user.name
+                )}{" "}
+              </button>{" "}
+              <ul
+                className="dropdown-menu user-dropdown"
+                aria-labelledby="userDropdown"
+              >
+                {" "}
                 {isLoggedIn ? (
                   <>
+                    {" "}
+                    <li className="username">{user.name}</li>{" "}
+                    <li>
+                      <hr className="dropdown-divider" />
+                    </li>{" "}
                     <li>
                       <Link className="dropdown-item" to="/account">
                         Account
                       </Link>
-                    </li>
+                    </li>{" "}
                     <li>
                       <button className="dropdown-item" onClick={handleLogout}>
                         Logout
                       </button>
-                    </li>
+                    </li>{" "}
                   </>
                 ) : (
                   <li>
@@ -198,10 +212,13 @@ const Header = () => {
                       Login Now
                     </Link>
                   </li>
-                )}
-              </ul>
-            </div>
+                )}{" "}
+              </ul>{" "}
+            </div>{" "}
           </div>
+
+
+
         </nav>
       </header>
       {message && (

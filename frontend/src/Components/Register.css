@@ -1,6 +1,6 @@
 /* General container styling */
 .register-container {
-  background: linear-gradient(120deg, #1e1e1e, #0a4cb8);
+  background: linear-gradient(135deg, #000000, #2222ff);
   padding: 2.5rem;
   border-radius: 15px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
@@ -143,6 +143,11 @@ select:focus {
 }
 .form-group {
   position: relative; /* Added for absolute positioning of the icon */
+}
+.email-verification-message{
+  color: gold;
+  margin-left: 10px;
+
 }
 
 .username-availability-icon {

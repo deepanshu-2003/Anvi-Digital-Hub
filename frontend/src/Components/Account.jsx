@@ -7,7 +7,7 @@ import Header from "./Header";
 
 const Account = () => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true); // Add loading state
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -18,6 +18,7 @@ const Account = () => {
           navigate("/login");
           return;
         }
+
         const response = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/auth/get-user`,
           {
@@ -28,12 +29,13 @@ const Account = () => {
             },
           }
         );
+
         const user = await response.json();
         setUser(user);
       } catch (error) {
         console.error("Error fetching user data:", error);
       } finally {
-        setLoading(false); // Set loading to false after the fetch
+        setLoading(false);
       }
     };
 
@@ -45,7 +47,7 @@ const Account = () => {
   }
 
   if (!user) {
-    navigate("/login"); // Redirect to login if user is not logged in
+    navigate("/login");
     return null;
   }
 
@@ -87,7 +89,6 @@ const Account = () => {
               className={user.mobile_verified ? "icon-verified" : "icon-not-verified"}
             />
           </div>
-
 
           <button className="edit-btn">
             <FontAwesomeIcon icon={faEdit} /> Edit

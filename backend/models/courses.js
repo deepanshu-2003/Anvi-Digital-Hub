@@ -1,5 +1,5 @@
 const Mongoose = require('mongoose');
-const CouseSchema = Mongoose.Schema({
+const CourseSchema = Mongoose.Schema({
     course_name: {
         type:String,
         require:true
@@ -35,4 +35,4 @@ const CouseSchema = Mongoose.Schema({
 
 })
 
-module.exports = Mongoose.model('courses',CouseSchema);
+module.exports = Mongoose.model('courses',CourseSchema);
