@@ -1,74 +1,79 @@
 /* General Header Styles */
 body {
-  margin-left: auto;
   margin-top: 70px;
   width: 100%;
-}
-
-html,
-body {
   overflow-x: hidden; /* Prevent horizontal scrolling */
   overflow-y: auto; /* Allow vertical scrolling */
 }
 
+:root {
+  --gold: gold;
+  --white: #ffffff;
+  --black: #000000;
+  --gradient: linear-gradient(90deg, #050505, #2f0fe6);
+  --hover-bg: rgba(255, 255, 255, 0.1);
+  --dropdown-bg: #1e1e2d;
+}
+
+/* Header Styles */
 .custom-header {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
-  min-height: 70px; /* Increased height for better spacing */
-  max-height: 80px;
+  min-height: 70px;
   z-index: 1000;
-  background: linear-gradient(90deg, #050505, #2f0fe6);
+  background: var(--gradient);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-  padding: 15px 0; /* Increased padding for better spacing */
+  padding: 10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Ensure items are distributed correctly */
 }
 
 .navbar-brand .logo {
-  margin-left: 20px;
+  margin-right: 10px;
   height: 40px;
   width: 40px;
+  object-fit: cover;
 }
 
-/* Navigation Link Styles */
 .nav-link {
   transition: all 0.3s ease;
   font-weight: bold;
   font-size: 1rem;
   color: rgba(255, 255, 255, 0.8);
-  padding: 10px 20px; /* Increased padding for better click area */
+  padding: 10px 20px;
   border-radius: 4px;
 }
 
 .nav-link.active,
 .nav-link:hover {
-  color: gold !important;
-  text-shadow: 0 0 8px rgba(255, 215, 0, 0.8); /* Glow effect for gold */
-  background-color: rgba(255, 255, 255, 0.1); /* Subtle hover background */
+  color: var(--gold) !important;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+  background-color: var(--hover-bg);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-/* User Section Styles */
 .user-section {
   display: flex;
   align-items: center;
-  justify-content: flex-end; /* Aligns items to the right */
   gap: 10px;
-  /* margin-right: 20px; Added margin for better spacing */
-  /* margin-top: 12px; */
+  padding-right: 20px; /* Adjusted padding for spacing */
+  flex-wrap: nowrap; /* Prevents wrapping in larger screens */
 }
 
-/* Profile Image Styles */
 .profile-header {
   width: 50px;
   height: 50px;
   border-radius: 50%;
   object-fit: cover;
-  background-color: #ccc; /* Placeholder background color */
+  background-color: #ccc;
 }
-/* User Button Styling */
+
 .user-section .user-btn {
   background-color: transparent;
-  color: white;
+  color: var(--white);
   font-weight: bold;
   border: none;
   font-size: 1rem;
@@ -79,21 +84,29 @@ body {
 }
 
 .user-section .user-btn:hover {
-  color: gold;
+  color: var(--gold);
   text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
 }
 
-/* Dropdown Menu Styles */
+.user-btn {
+  color: var(--white);
+  font-weight: bold;
+  border: none;
+}
+
+.user-btn:hover {
+  color: var(--gold);
+}
+
 .user-dropdown {
-  background-color: #1e1e2d;
+  background-color: var(--dropdown-bg);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 10px;
-  /* padding: 10px; */
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .user-dropdown .dropdown-item {
-  color: white;
+  color: var(--white);
   font-weight: 500;
   padding: 8px 16px;
   border-radius: 4px;
@@ -101,45 +114,47 @@ body {
 }
 
 .user-dropdown .dropdown-item:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: gold;
+  background-color: var(--hover-bg);
+  color: var(--gold);
 }
 
-/* Username Display */
 .username {
   font-weight: bold;
   text-align: center;
-  color: gold;
-  /* font-size: 1rem; */
+  color: var(--gold);
   text-transform: capitalize;
-  /* text-shadow: 0 0 6px rgba(255, 215, 0, 0.6); */
 }
+
 .dropdown-divider {
-  background-color: white;
-  /* width: 2px; */
+  background-color: var(--white);
   height: 2px;
 }
 
-/* Mobile Menu Toggle */
+/* Updated Navbar Toggler Styles */
 .navbar-toggler {
-  border-color: rgb(21, 17, 80);
-  color: rgb(90, 110, 221);
-  background-color: rgb(255, 255, 255);
-  margin-left: 20px;
+  background: none; /* Remove default background */
+  border: none; /* Remove border */
+  margin-left: 15px;
+  color: var(--white); /* Font Awesome Icon color */
 }
-
+.navbar-toggler:hover {
+  color: var(--gold); /* Change color on hover */
+}
 .navbar-toggler-icon {
-  background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23ffffff' viewBox='0 0 30 30'%3E%3Cpath stroke='rgba%280, 0, 0, 0.5%29' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3E%3C/svg%3E");
+  display: none;
 }
-
+.navbar-toggler:focus {
+  outline: none;
+  box-shadow: none;
+  border: none;
+}
 /* Offcanvas Menu Styles */
 .offcanvas-start {
   width: 250px;
   max-width: 80%;
-  background-color: #1e1e2d;
-  height: 100%;
+  background-color: var(--dropdown-bg);
+  color: var (--white);
   overflow-y: auto;
-  transition: transform 0.3s ease-in-out;
 }
 
 .offcanvas-header {
@@ -152,81 +167,61 @@ body {
 
 .offcanvas-body {
   padding: 20px;
-  color: white;
-  font-size: 1rem;
+  color: var(--white);
 }
 
 .offcanvas-title {
   font-size: 1.25rem;
   font-weight: bold;
-  color: gold;
+  color: var(--gold);
 }
 
-.btn-close {
+/* Unique and attractive close button */
+.unique-close-button {
+  background: none;
   border: none;
-  background-color: white;
+  cursor: pointer;
+}
+.unique-close-button i {
   font-size: 1.5rem;
-  color: #000;
+  color: var(--white);
+  transition: all 0.3s ease;
+}
+.unique-close-button:hover i {
+  color: var(--gold);
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+}
+.unique-close-button:focus {
+  outline: none;
+  box-shadow: none;
+  border: none;
 }
 
-/* Error and Success Message Styles */
-.error-messages,
-.success-message {
-  padding: 1rem;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-}
-
-.error-messages {
-  background-color: rgba(255, 0, 0, 0.1);
-  color: #ff4c4c;
-}
-
-.success-message {
-  background-color: rgba(0, 255, 0, 0.1);
-  color: #4caf50;
-}
-
-/* Media Queries for Mobile Responsiveness */
 @media (max-width: 800px) {
   body {
-    width: 100%;
-    align-items: center;
-    margin-top: 106px;
+    margin-top: 100px;
   }
 
   .custom-header {
     max-height: 140px;
   }
 
-  .navbar {
-    align-items: right;
-  }
-
   .navbar-brand {
-    order: 1;
-    margin-right: 30px;
-    align-items: right;
-  }
-
-  .navbar-toggler {
-    order: 1;
-    align-self: flex-start;
-    margin-left: 20px;
-    margin-top: 10px;
+    margin-right: 20px;
   }
 
   .user-section {
-    order: 1;
-    width: 100%;
-    display: flex;
-    justify-content: flex-end;
-    padding-right: 20px;
+    padding-right: 10px;
+    flex-wrap: wrap; /* Allows wrapping in smaller screens */
   }
 
   .user-btn {
-    width: auto;
-    /* text-align: center; */
-    margin-right: 20px;
+    padding: 5px 10px;
+  }
+
+  /* Ensure dropdown fits and stays visible */
+  .user-dropdown {
+    left: auto;
+    right: 0px; /* Makes sure the dropdown stays within viewport */
   }
 }

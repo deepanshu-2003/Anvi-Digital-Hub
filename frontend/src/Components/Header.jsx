@@ -1,14 +1,64 @@
 import React, { useEffect, useState, useContext } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { MessageContext } from "../Context/MessageContext";
-import "./Header.css";
 import Message from "./Message";
+import logo from "/logo192.png"; // Adjust the path as needed
 import axios from "axios";
+import "./Header.css";
+
+// Reusable User Dropdown Component
+const UserDropdown = ({ isLoggedIn, user, handleLogout }) => (
+  <div className="dropdown me-4">
+    <button
+      className="btn user-btn dropdown-toggle"
+      type="button"
+      id="userDropdown"
+      data-bs-toggle="dropdown"
+      aria-expanded="false"
+      aria-haspopup="true"
+    >
+      {isLoggedIn ? (
+        <img
+          src={user.profileImg || "https://via.placeholder.com/150"}
+          alt="Profile"
+          className="profile-header"
+        />
+      ) : (
+        user.name
+      )}
+    </button>
+    <ul className="dropdown-menu user-dropdown" aria-labelledby="userDropdown">
+      {isLoggedIn ? (
+        <>
+          <li className="username">{user.name}</li>
+          <li>
+            <hr className="dropdown-divider" />
+          </li>
+          <li>
+            <Link className="dropdown-item" to="/account">
+              Account
+            </Link>
+          </li>
+          <li>
+            <button className="dropdown-item" onClick={handleLogout}>
+              Logout
+            </button>
+          </li>
+        </>
+      ) : (
+        <li>
+          <Link className="dropdown-item" to="/login">
+            Login Now
+          </Link>
+        </li>
+      )}
+    </ul>
+  </div>
+);
 
 const Header = () => {
   const location = useLocation();
-  const navigate = useNavigate();
   const { message, setMessage } = useContext(MessageContext);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
@@ -18,6 +68,7 @@ const Header = () => {
   });
   const [initialized, setInitialized] = useState(false);
 
+  // Validate JWT Token and Fetch User Details
   useEffect(() => {
     const validateToken = async () => {
       const token = localStorage.getItem("auth_token");
@@ -36,8 +87,6 @@ const Header = () => {
           handleLogout();
           return false;
         }
-
-        console.log("Token validated:", response.data);
         return true;
       } catch (error) {
         console.error("Error validating token:", error);
@@ -89,8 +138,7 @@ const Header = () => {
       setIsLoggedIn(!!token);
 
       if (!localStorage.getItem("user")) {
-        fetchUserDetails();
-        console.log("Fetching user details");
+        await fetchUserDetails();
       }
     };
 
@@ -99,6 +147,7 @@ const Header = () => {
     }
   }, [initialized]);
 
+  // Logout Functionality
   const handleLogout = () => {
     localStorage.clear();
     setIsLoggedIn(false);
@@ -106,128 +155,93 @@ const Header = () => {
     setInitialized(false);
   };
 
+  // Active Menu Link Check
   const isActive = (path) => location.pathname === path;
 
   return (
     <>
-      <header className="custom-header text-white shadow-sm py-1  ">
+      {" "}
+      <header className="custom-header text-white shadow-sm py-1">
+        {" "}
         <nav className="navbar navbar-expand-lg navbar-dark container py-1">
+          {" "}
+          {/* Offcanvas Navigation */}{" "}
           <button
             className="navbar-toggler me-3"
             type="button"
             data-bs-toggle="offcanvas"
             data-bs-target="#offcanvasNavbar"
             aria-controls="offcanvasNavbar"
-            aria-label="Toggle navigation"
           >
-            <span className="navbar-toggler-icon"></span>
-          </button>
+            {" "}
+            <i className="fas fa-bars"></i> {/* Font Awesome Icon */}{" "}
+          </button>{" "}
           <Link
             className="navbar-brand fw-bold d-flex align-items-center"
             to="/"
           >
-            <img src="logo192.png" alt="Logo" className="logo me-2" />
-            Anvi Digital Hub
-          </Link>
+            {" "}
+            <img src={logo} alt="Logo" className="logo me-2" /> Anvi Digital Hub{" "}
+          </Link>{" "}
+          {/* Offcanvas Menu */}{" "}
           <div
             className="offcanvas offcanvas-start"
             id="offcanvasNavbar"
             data-bs-scroll="true"
           >
+            {" "}
             <div className="offcanvas-header">
-              <h5 className="offcanvas-title">Anvi Digital Hub</h5>
+              {" "}
+              <h5 className="offcanvas-title">Anvi Digital Hub</h5>{" "}
               <button
-                className="btn-close"
+                className="btn-close unique-close-button"
                 data-bs-dismiss="offcanvas"
                 aria-label="Close"
-              ></button>
-            </div>
+              >
+                {" "}
+                <i className="fas fa-times-circle"></i>{" "}
+                {/* Font Awesome Close Icon */}{" "}
+              </button>{" "}
+            </div>{" "}
             <div className="offcanvas-body">
+              {" "}
               <ul className="navbar-nav ms-auto">
+                {" "}
                 {["Home", "Services", "Courses", "About", "Contact"].map(
                   (menu) => (
                     <li className="nav-item" key={menu}>
+                      {" "}
                       <Link
                         className={`nav-link fw-semibold ${
                           isActive(`/${menu.toLowerCase()}`) ? "active" : ""
                         }`}
                         to={`/${menu.toLowerCase()}`}
                       >
-                        {menu}
-                      </Link>
+                        {" "}
+                        {menu}{" "}
+                      </Link>{" "}
                     </li>
                   )
-                )}
-              </ul>
-            </div>
-          </div>
-
-          <div className="d-flex align-items-center ms-lg-4 user-section">
-            {" "}
-            <div className="dropdown me-4">
-              {" "}
-              <button
-                className="btn user-btn dropdown-toggle"
-                type="button"
-                id="userDropdown"
-                data-bs-toggle="dropdown"
-              >
-                {" "}
-                {isLoggedIn ? (
-                  <img
-                    src={user.profileImg}
-                    alt="Profile"
-                    className="profile-header"
-                  />
-                ) : (
-                  user.name
-                )}{" "}
-              </button>{" "}
-              <ul
-                className="dropdown-menu user-dropdown"
-                aria-labelledby="userDropdown"
-              >
-                {" "}
-                {isLoggedIn ? (
-                  <>
-                    {" "}
-                    <li className="username">{user.name}</li>{" "}
-                    <li>
-                      <hr className="dropdown-divider" />
-                    </li>{" "}
-                    <li>
-                      <Link className="dropdown-item" to="/account">
-                        Account
-                      </Link>
-                    </li>{" "}
-                    <li>
-                      <button className="dropdown-item" onClick={handleLogout}>
-                        Logout
-                      </button>
-                    </li>{" "}
-                  </>
-                ) : (
-                  <li>
-                    <Link className="dropdown-item" to="/login">
-                      Login Now
-                    </Link>
-                  </li>
                 )}{" "}
               </ul>{" "}
             </div>{" "}
-          </div>
-
-
-
-        </nav>
-      </header>
+          </div>{" "}
+          {/* User Section */}{" "}
+          <UserDropdown
+            isLoggedIn={isLoggedIn}
+            user={user}
+            handleLogout={handleLogout}
+          />{" "}
+        </nav>{" "}
+      </header>{" "}
+      {/* Message Component */}{" "}
       {message && (
         <Message
           type={message.type}
           message={message.text}
           onClose={() => setMessage(null)}
         />
-      )}
+      )}{" "}
     </>
   );
 };

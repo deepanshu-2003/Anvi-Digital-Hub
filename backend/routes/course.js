@@ -76,6 +76,22 @@ router.post(
 
 
 // Course fetching from database
+
+
+router.get("/get/:id", async (req, res) => {
+  try {
+    const course = await Course.findById(req.params.id);
+    if (!course) {
+      return res.status(404).json({ error: "Course not found" });
+    }
+    res.json(course);
+  } catch (error) {
+    console.error("Error fetching course:", error.message);
+    res.status(500).send("Server Error");
+  }
+});
+
+
 router.post("/get", async (req, res) => {
   try {
     const courses = await Course.aggregate([

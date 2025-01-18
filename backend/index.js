@@ -1,9 +1,9 @@
+require('dotenv').config(); // Load environment variables
 const express = require('express');
 const app = express();
 const cors = require('cors');
-const port = 5000;
+const port = process.env.PORT || 5000; // Use environment variable for port
 const bcrypt = require("bcryptjs");
-const axios = require("axios");
 const connectToMongo = require('./db');
 
 // Importing the User model
@@ -14,26 +14,21 @@ connectToMongo();
 
 // Middleware
 app.use(express.json());
-app.use(cors());
-
-
-
-
-
-
+app.use(cors()); // Configure CORS
 
 // Importing routes
 app.use('/auth', require('./routes/auth'));
 app.use('/course', require('./routes/course'));
 app.use('/general', require('./routes/general'));
+app.use('/payment', require('./routes/payment'));
 
 // Default admin creation function
 const createDefaultAdmin = async () => {
     try {
-        const adminUsername = "admin";
-        const adminEmail = "admin@anvidigitalhub.com";
-        const adminPassword = "admin@123";
-        const adminMobile = "1234567890";
+        const adminUsername = process.env.ADMIN_USERNAME;
+        const adminEmail = process.env.ADMIN_EMAIL;
+        const adminPassword = process.env.ADMIN_PASSWORD;
+        const adminMobile = process.env.ADMIN_MOBILE;
 
         // Check if the admin user already exists
         const existingAdmin = await User.findOne({ type: "admin" });
@@ -65,6 +60,12 @@ const createDefaultAdmin = async () => {
 
 // Call the function to create the default admin user
 createDefaultAdmin();
+
+// Global error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).send({ message: 'Something went wrong!', error: err.message });
+});
 
 // Start the Express server
 app.listen(port, () => {

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import Header from "./Header";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./Courses.css";
@@ -63,81 +64,84 @@ const Courses = () => {
               const discountedPrice =
                 course.course_price - course.course_discount;
               const discountPercentage = (
-                (course.course_discount / course.course_price) * 100
+                (course.course_discount / course.course_price) *
+                100
               ).toFixed(0);
-
-              const handleCardClick = () => {
-                console.log(`Clicked on course: ${course.course_name}`);
-              };
 
               return (
                 <div
                   className="col-lg-3 col-md-4 col-sm-6 col-12 mb-4"
                   key={course._id}
-                  onClick={handleCardClick}
                   style={{ cursor: "pointer" }}
                 >
-                  <div className="card course-card h-100 border-0 shadow-sm">
-                    <img
-                      src={
-                        course.course_img !== "Please enter a course image"
-                          ? course.course_img
-                          : "https://via.placeholder.com/300"
-                      }
-                      className="card-img-top"
-                      alt={course.course_name}
-                      style={{ height: "150px", objectFit: "cover" }}
-                    />
-                    <div className="card-body d-flex flex-column">
-                      <h5 className="card-title text-dark">
-                        {course.course_name}
-                      </h5>
-                      <p className="card-text text-muted">
-                        {course.course_desc}
-                      </p>
-                      <p className="card-text text-muted">
-                        Duration:{" "}
-                        <span className="fw-bold">
-                          {course.course_duration}
-                        </span>
-                      </p>
-                      <div className="mb-2">{renderStars(course.averageRating)}</div>
-                      <p className="card-text text-muted">
-                        Rating:{" "}
-                        <span className="fw-bold">
-                          {course.averageRating
-                            ? course.averageRating.toFixed(1)
-                            : "No ratings yet"}{" "}
-                          ({course.totalReviews}{" "}
-                          {course.totalReviews === 1 ? "review" : "reviews"})
-                        </span>
-                      </p>
-                      <div className="mt-auto">
-                        <p
-                          className="text-danger mb-0 fw-bold"
-                          style={{ fontSize: "14px" }}
-                        >
-                          <s>Rs. {course.course_price}/-</s>
+                  <Link
+                    to={`/course/${course._id}`}
+                    className="text-decoration-none"
+                  >
+                    <div className="card course-card h-100 border-0 shadow-sm">
+                      <img
+                        src={
+                          course.course_img !== "Please enter a course image"
+                            ? course.course_img
+                            : "https://via.placeholder.com/300"
+                        }
+                        className="card-img-top"
+                        alt={course.course_name}
+                        style={{ height: "150px", objectFit: "cover" }}
+                      />
+                      <div className="card-body d-flex flex-column">
+                        <h5 className="card-title text-dark">
+                          {course.course_name}
+                        </h5>
+                        <p className="card-text text-muted course-desc">
+                          {course.course_desc}
                         </p>
-                        <p
-                          className="text-success fw-bold"
-                          style={{ fontSize: "18px" }}
-                        >
-                          Rs. {discountedPrice}/-{" "}
-                          <span className="badge bg-success ms-4">
-                            {discountPercentage}% OFF
+                        <p className="card-text text-muted">
+                          Duration:{" "}
+                          <span className="fw-bold">
+                            {course.course_duration}
                           </span>
                         </p>
-                        <p className="text-muted mb-0">
-                          {course.course_label ? (
-                            <span className="badge bg-primary">
-                              {course.course_label}
-                            </span>
-                          ) : null}
+                        <div className="mb-2">
+                          {renderStars(course.averageRating)}
+                        </div>
+                        <p className="card-text text-muted">
+                          Rating:{" "}
+                          <span className="fw-bold">
+                            {course.averageRating
+                              ? course.averageRating.toFixed(1)
+                              : "No ratings yet"}{" "}
+                            ({course.totalReviews}{" "}
+                            {course.totalReviews === 1 ? "review" : "reviews"})
+                          </span>
                         </p>
+                        <div className="mt-auto">
+                          <p
+                            className="text-danger mb-0 fw-bold"
+                            style={{ fontSize: "14px" }}
+                          >
+                            <s>Rs. {course.course_price}/-</s>
+                          </p>
+                          <p
+                            className="text-success fw-bold"
+                            style={{ fontSize: "18px" }}
+                          >
+                            Rs. {discountedPrice}/-{" "}
+                            <span className="badge bg-success ms-4">
+                              {discountPercentage}% OFF
+                            </span>
+                          </p>
+                          <p className="text-muted mb-0">
+                            {course.course_label ? (
+                              <span className="badge bg-primary">
+                                {course.course_label}
+                              </span>
+                            ) : null}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 </div>
               );
             })}

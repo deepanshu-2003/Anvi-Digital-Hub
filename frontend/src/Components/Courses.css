@@ -1,12 +1,18 @@
 .course-card {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    min-height: 400px; /* Adjust the min height as needed */
-  }
-  
-  .card-body {
-    display: flex;
-    flex-direction: column;
-  }
-  
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 400px; /* Adjust the min height as needed */
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+}
+.course-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* Limit to 2 lines */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
