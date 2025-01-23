@@ -5,14 +5,13 @@ const User = require("../models/users");
 const CourseReview = require("../models/courseReview");
 const { check, validationResult } = require("express-validator");
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose"); 
 
 // @route - POST /course/add-course
 // @desc - Add a new course
 // @access - Public
 
-const getUserId = (auth_token)=>{
-
-}
+const getUserId = (auth_token) => {};
 
 // Course creation in database
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -74,9 +73,7 @@ router.post(
   }
 );
 
-
 // Course fetching from database
-
 
 router.get("/get/:id", async (req, res) => {
   try {
@@ -92,6 +89,89 @@ router.get("/get/:id", async (req, res) => {
 });
 
 
+
+
+
+
+router.get("/:id/reviews", async (req, res) => {
+  try {
+    const courseId = req.params.id;
+
+    // Validate course existence
+    const courseExists = await Course.findById(courseId);
+    if (!courseExists) {
+      return res.status(404).json({ error: "Course not found" });
+    }
+
+    // Aggregation pipeline to fetch reviews with username and calculate average rating
+    const reviewsData = await CourseReview.aggregate([
+      {
+        $match: { course: new mongoose.Types.ObjectId(courseId) }, // Use 'new' for ObjectId
+      },
+      {
+        $lookup: {
+          from: "users", // Join with users collection
+          localField: "user", // Field in CourseReview
+          foreignField: "_id", // Field in User
+          as: "userDetails",
+        },
+      },
+      {
+        $unwind: "$userDetails", // Flatten the userDetails array
+      },
+      {
+        $group: {
+          _id: "$course", // Group by course
+          reviews: {
+            $push: {
+              username: "$userDetails.username", // Fetch username from userDetails
+              rating: "$rating",
+              review: "$review",
+              date: "$review_date",
+            },
+          },
+          averageRating: { $avg: "$rating" }, // Calculate average rating
+          totalReviews: { $sum: 1 }, // Count total reviews
+        },
+      },
+      {
+        $lookup: {
+          from: "courses", // Join with courses collection
+          localField: "_id",
+          foreignField: "_id",
+          as: "courseDetails",
+        },
+      },
+      {
+        $unwind: "$courseDetails", // Flatten the courseDetails array
+      },
+      {
+        $project: {
+          _id: 0,
+          course: "$courseDetails.course_name", // Include course name
+          averageRating: 1,
+          totalReviews: 1,
+          reviews: 1,
+        },
+      },
+    ]);
+
+    if (!reviewsData.length) {
+      return res.json({ course: courseExists.course_name, averageRating: 0, totalReviews: 0, reviews: [] });
+    }
+
+    res.json(reviewsData[0]);
+  } catch (error) {
+    console.error("Error fetching reviews:", error.message);
+    res.status(500).send("Server Error");
+  }
+});
+
+
+
+
+
+//  Get all courses
 router.post("/get", async (req, res) => {
   try {
     const courses = await Course.aggregate([
@@ -117,8 +197,6 @@ router.post("/get", async (req, res) => {
     res.status(500).send("Server Error");
   }
 });
-
-
 
 // Customer ratings on course
 router.post(

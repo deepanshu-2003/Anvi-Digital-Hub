@@ -14,7 +14,7 @@ const razorpay = new Razorpay({
 
 // Endpoint to initiate payment
 router.post('/initiate', async (req, res) => {
-    const { orderId, orderAmount, customerEmail, customerPhone } = req.body;
+    const { orderId, orderAmount } = req.body;
 
     const options = {
         amount: orderAmount * 100, // Amount in paise

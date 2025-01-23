@@ -14,7 +14,7 @@ const UserDropdown = ({ isLoggedIn, user, handleLogout }) => (
       className="btn user-btn dropdown-toggle"
       type="button"
       id="userDropdown"
-      data-bs-toggle="dropdown"
+      data-bs-toggle="dropdown" 
       aria-expanded="false"
       aria-haspopup="true"
     >
