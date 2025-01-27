@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Register.css";
 import Header from "./Header";
@@ -12,6 +12,8 @@ import {
   faTimesCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import GoogleAuthenticator from "./GoogleAuthenticator";
+import axios from "axios";
+
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -19,7 +21,9 @@ const Register = () => {
     last_name: "",
     username: "",
     email: "",
+    email_verified:false,
     mobile: "",
+    mobile_verified : false,
     password: "",
     confirm_password: "",
   });
@@ -33,7 +37,6 @@ const Register = () => {
   const [timer, setTimer] = useState(0);
   const navigate = useNavigate();
   let timerInterval = null;
-
   const startTimer = () => {
     setTimer(30); // 30 seconds countdown
     clearInterval(timerInterval); // Clear existing timer if any
@@ -47,6 +50,27 @@ const Register = () => {
       });
     }, 1000);
   };
+
+  useEffect(() => {
+    let interval;
+    if (!formData.email_verified) {
+      interval = setInterval(async () => {
+        try {
+          const response = await axios.post(
+            `${import.meta.env.VITE_BACKEND_URL}/auth/email-verify-status`,
+            { email: formData.email }
+          );
+          if (response.data.status) {
+            setFormData((prev) => ({ ...prev, email_verified: true }));
+            clearInterval(interval);
+          }
+        } catch (error) {
+          console.error("Error checking email verification status:", error);
+        }
+      }, 5000); // Check every 5 seconds
+    }
+    return () => clearInterval(interval);
+  }, [formData.email]);
 
   // Email Verification function .................
   const verifyEmail = async () => {
@@ -129,6 +153,9 @@ const Register = () => {
   };
 
   const handleChange = (e) => {
+    if (e.target.name === "email" && formData.email_verified) {
+      return;
+    }
     if (e.target.name === "email" && emailVerification) {
       if(timer===0){
         setEmailVerification(false);
@@ -269,10 +296,11 @@ const Register = () => {
                   required
                 />
               </div>
+
               <div className="form-group">
                 <label htmlFor="verification">Verify Email ID </label>
                 {/* Verification button */}
-                {!emailVerification ? (
+                {!emailVerification && !formData.email_verified? (
                   <button
                     type="button"
                     className="btn btn-secondary verification"
@@ -282,10 +310,10 @@ const Register = () => {
                   </button>
                 ) : (
                   <>
-                    {emailVerification && timer > 0 && (
+                    {emailVerification && timer > 0 && !formData.email_verified && (
                       <span className="timer-message">Resend in {timer}s</span>
                     )}
-                    {emailVerification && timer === 0 && (
+                    {emailVerification && timer === 0 && !formData.email_verified &&(
                       <>
                         <button
                           type="button"
@@ -297,6 +325,15 @@ const Register = () => {
                         {/* <button type="button" className="btn btn-secondary verification" onClick={()=>{
                           setEmailVerification(false);
                         }}>Change Email</button> */}
+                      </>
+                    )}
+                   {formData.email_verified && (
+                    <>
+                      <span className="verified-message">Email Verified successfully</span>
+                      <i
+                        className="fas fa-check-circle"
+                        style={{ color: "green" }}
+                      ></i>
                       </>
                     )}
                   </>

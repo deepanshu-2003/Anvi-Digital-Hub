@@ -1,29 +1,14 @@
 const Mongoose  = require("mongoose");
 
-const VerificationSchema = Mongoose.Schema({
+const EmailVerificationSchema = Mongoose.Schema({
     userId:{
         type: String,
         require: true
     },
-    type:{
-        type:String,
-        default: "email"
-    },
     email:{
         type: String,
     },
-    mobile:{
-        type:String,
-    },
     email_verified:{
-        type: Boolean,
-        default: false
-    },
-    mobile:{
-        type: String,
-        require: true
-    },
-    mobile_verified:{
         type: Boolean,
         default: false
     },
@@ -35,4 +20,4 @@ const VerificationSchema = Mongoose.Schema({
 
 });
 
-module.exports = Mongoose.model('verify',VerificationSchema);
+module.exports = Mongoose.model('verify',EmailVerificationSchema);

@@ -59,6 +59,7 @@ const Courses = () => {
       <div className="about-page bg-light py-5">
         <div className="container">
           <h1 className="mb-5 text-center text-primary">Our Courses</h1>
+
           <div className="row">
             {courses.map((course) => {
               const discountedPrice =

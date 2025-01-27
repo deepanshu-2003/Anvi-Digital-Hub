@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useContext } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { Link, useLocation } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { MessageContext } from "../Context/MessageContext";
 import Message from "./Message";
 import logo from "/logo192.png"; // Adjust the path as needed
@@ -9,7 +9,7 @@ import "./Header.css";
 
 // Reusable User Dropdown Component
 const UserDropdown = ({ isLoggedIn, user, handleLogout }) => (
-  <div className="dropdown me-4">
+  <div className="dropdown me-3">
     <button
       className="btn user-btn dropdown-toggle"
       type="button"
@@ -67,6 +67,7 @@ const Header = () => {
     profileImg: localStorage.getItem("profile_img") || null,
   });
   const [initialized, setInitialized] = useState(false);
+  const navigate = useNavigate();
 
   // Validate JWT Token and Fetch User Details
   useEffect(() => {
@@ -153,6 +154,7 @@ const Header = () => {
     setIsLoggedIn(false);
     setUser({ name: "Guest User", profileImg: null });
     setInitialized(false);
+    // navigate("/");
   };
 
   // Active Menu Link Check
@@ -161,9 +163,9 @@ const Header = () => {
   return (
     <>
       {" "}
-      <header className="custom-header text-white shadow-sm py-1">
+      <header className="custom-header text-white shadow-sm py-0">
         {" "}
-        <nav className="navbar navbar-expand-lg navbar-dark container py-1">
+        <nav className="navbar navbar-expand-lg navbar-dark container my-1">
           {" "}
           {/* Offcanvas Navigation */}{" "}
           <button
@@ -230,7 +232,10 @@ const Header = () => {
           <UserDropdown
             isLoggedIn={isLoggedIn}
             user={user}
-            handleLogout={handleLogout}
+            handleLogout={()=>{
+              navigate("/");
+              handleLogout();
+            }}
           />{" "}
         </nav>{" "}
       </header>{" "}

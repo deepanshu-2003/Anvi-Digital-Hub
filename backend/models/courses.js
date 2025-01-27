@@ -24,6 +24,15 @@ const CourseSchema = Mongoose.Schema({
         type:String,
         require:true
     },
+    course_expiry:{
+        type:Number,
+        default:6
+    },
+    course_expiry_type:{
+        type:String,
+        default:"Months",
+        emum:["Days","Months","Years"]
+    },
     course_created:{
         type:Date,
         default:Date.now

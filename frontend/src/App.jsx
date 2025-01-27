@@ -9,9 +9,9 @@ import Login from "./Components/Login";
 import Register from "./Components/Register";
 import Account from "./Components/Account";
 import Course from "./Components/Course";
+import Verification from "./Components/Verification";
 
 function App() {
-
   return (
     <>
       <Routes>
@@ -24,10 +24,8 @@ function App() {
         <Route path="/account" element={<Account />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route
-          path="/course/:id"
-          element={<Course />}
-        />
+        <Route path="/course/:id" element={<Course />} />
+        <Route path="/verify" element={<Verification />} />
       </Routes>
     </>
   );

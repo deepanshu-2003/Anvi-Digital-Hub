@@ -7,6 +7,7 @@ import Spinner from "react-bootstrap/Spinner";
 import Header from "./Header";
 import "./Course.css";
 import { MessageContext } from "../Context/MessageContext";
+import Verification from "./Verification";
 
 const Course = () => {
   const { id } = useParams();
@@ -17,6 +18,8 @@ const Course = () => {
   const [averageRating, setAverageRating] = useState(0);
   const [totalReviews, setTotalReviews] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [showMetaModal, setshowMetaModal] = useState(false);
+  const [metaUser, setMetaUser] = useState(false);
 
   const renderStars = (rating) => {
     const fullStars = Math.floor(rating);
@@ -71,16 +74,29 @@ const Course = () => {
   }, [id]);
 
   const handleBuyNow = async () => {
-    const discountedPrice = course.course_price - course.course_discount;
-
     try {
+      if (!localStorage.getItem("auth_token")) {
+        setMessage({ type: "warning", text: "Please Login with a user ID" });
+        return;
+      }
+      const metaUser = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/auth/meta-user`,{},{
+        headers:{
+          auth_token:`${localStorage.getItem("auth_token")}`,
+        },
+      })
+      if (!metaUser.data.status) {
+        setshowMetaModal(true);
+        return;
+      }
       const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/payment/initiate`,
         {
-          orderId: `order_${id}`,
-          orderAmount: discountedPrice,
-          customerEmail: "customer@example.com",
-          customerPhone: "1234567890",
+          course_id: id,
+        },
+        {
+          headers: {
+            auth_token: localStorage.getItem("auth_token"),
+          },
         }
       );
 
@@ -93,15 +109,13 @@ const Course = () => {
           description: "Purchase Course",
           image: "/logo192.png",
           order_id: response.data.id,
-          handler: async function (response) {
+          handler: async function (resp) {
             await axios.post(
               `${import.meta.env.VITE_BACKEND_URL}/payment/response`,
               {
-                orderId: `order_${id}`,
-                amount: discountedPrice,
-                currency: "INR",
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: resp.razorpay_payment_id,
+                razorpay_order_id: resp.razorpay_order_id,
+                course_id: id,
                 status: "success",
               }
             );
@@ -110,10 +124,10 @@ const Course = () => {
               text: "Course Purchased Successfully.",
             });
           },
-          prefill: {
-            email: "customer@example.com",
-            contact: "1234567890",
-          },
+          // prefill: {
+          //   email: "customer@example.com",
+          //   contact: "1234567890",
+          // },
           theme: {
             color: "#2f0fe6",
           },
@@ -210,7 +224,7 @@ const Course = () => {
                       {"★".repeat(review.rating)}
                       {"☆".repeat(5 - review.rating)}
                     </span>
-                    {review.rating}
+                    &nbsp;{review.rating}
                   </p>
                   <p>{review.review}</p>
                 </div>
@@ -238,6 +252,13 @@ const Course = () => {
           BUY NOW
         </button>
       </div>
+       {/* Verification Modal */}
+       {showMetaModal && (
+        <Verification
+          show={showMetaModal}
+          onHide={() => setshowMetaModal(false)}
+        />
+      )}
     </>
   );
 };

@@ -3,15 +3,15 @@ const router = express.Router();
 const Course = require("../models/courses");
 const User = require("../models/users");
 const CourseReview = require("../models/courseReview");
-const { check, validationResult } = require("express-validator");
+const { check, validationResult, body, query } = require("express-validator");
+const courseContent = require("../models/courseContent");
 const jwt = require("jsonwebtoken");
-const mongoose = require("mongoose"); 
+const mongoose = require("mongoose");
 
 // @route - POST /course/add-course
 // @desc - Add a new course
 // @access - Public
 
-const getUserId = (auth_token) => {};
 
 // Course creation in database
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -88,11 +88,6 @@ router.get("/get/:id", async (req, res) => {
   }
 });
 
-
-
-
-
-
 router.get("/:id/reviews", async (req, res) => {
   try {
     const courseId = req.params.id;
@@ -157,7 +152,12 @@ router.get("/:id/reviews", async (req, res) => {
     ]);
 
     if (!reviewsData.length) {
-      return res.json({ course: courseExists.course_name, averageRating: 0, totalReviews: 0, reviews: [] });
+      return res.json({
+        course: courseExists.course_name,
+        averageRating: 0,
+        totalReviews: 0,
+        reviews: [],
+      });
     }
 
     res.json(reviewsData[0]);
@@ -166,10 +166,6 @@ router.get("/:id/reviews", async (req, res) => {
     res.status(500).send("Server Error");
   }
 });
-
-
-
-
 
 //  Get all courses
 router.post("/get", async (req, res) => {
@@ -236,4 +232,95 @@ router.post(
     }
   }
 );
+
+// -----------------Admin endpoints --------------------------
+//--------------------Create Directory-----------------------------
+const fs = require("fs");
+const path = require("path");
+
+router.post(
+  "/make-dir",
+  [
+    check("name", "Please enter a valid directory name")
+      .not()
+      .isEmpty()
+      .matches(/^[a-zA-Z0-9_\s]+$/), // Only alphanumeric characters, underscores, and spaces are allowed
+    check("parent", "Parent ID must be a valid MongoDB ObjectId").optional().isMongoId(),
+    check("course_id", "Course ID is required and must be a valid MongoDB ObjectId").isMongoId(),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+      // Extract fields from the request
+      const { name, parent, course_id } = req.body;
+      const token = req.header("auth_token");
+
+      // Check token validity
+      if (!token) {
+        return res.status(401).json({ error: "Unauthorized access" });
+      }
+
+      const user_id = jwt.verify(token, JWT_SECRET).id;
+
+      // Verify user as admin
+      const user = await User.findById(user_id).select("-password");
+      if (!user || user.type !== "admin") {
+        return res.status(403).json({ error: "Unauthorized access" });
+      }
+
+      // Verify course existence
+      const course = await Course.findById(course_id);
+      if (!course) {
+        return res.status(404).json({ error: "Course not found" });
+      }
+
+      // Check if the parent directory exists (if provided)
+      let parentDir = null;
+      if (parent) {
+        parentDir = await courseContent.findById(parent);
+        if (!parentDir || parentDir.file_type !== "dir") {
+          return res.status(400).json({ error: "Invalid parent directory" });
+        }
+      }
+
+      // Check if a directory with the same name already exists under the same parent
+      const existingDir = await courseContent.findOne({
+        parent: parent || null,
+        course: course_id,
+        file_type: "dir",
+        file: name,
+      });
+
+      if (existingDir) {
+        return res.status(400).json({ error: "Directory with this name already exists" });
+      }
+
+      // Create the directory in the database
+      const newDir = new courseContent({
+        user: user_id,
+        course: course_id,
+        file_type: "dir",
+        parent: parent || null,
+        file: name,
+      });
+
+      const savedDir = await newDir.save();
+
+      res.status(201).json({
+        message: "Directory created successfully",
+        directory: savedDir,
+      });
+    } catch (error) {
+      console.error("Error creating directory:", error.message);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+);
+
+
+
 module.exports = router;

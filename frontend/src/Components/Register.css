@@ -184,7 +184,7 @@ select:focus {
 }
 
 @media (max-width: 768px) {
-  .row {
+  .register-container .row {
     flex-direction: column;
   }
   .register-container {

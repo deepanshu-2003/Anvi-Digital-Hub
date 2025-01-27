@@ -7,6 +7,7 @@ import Contact from './Components/Contact';
 import Login from './Components/Login';
 import CreateCourse from './Components/CreateCourse';
 import Account from './Components/Account';
+import CourseView from './Components/CourseView';
 
 function App() {
   return (
@@ -21,6 +22,8 @@ function App() {
         <Route path="/account" element={<Account />} />
         <Route path="/create-course" element={<CreateCourse />} />
         <Route path="/login" element={<Login />}/>
+        <Route path="/course/:id" element={<CourseView />}/>
+        
       </Routes>
     </Router>
   );

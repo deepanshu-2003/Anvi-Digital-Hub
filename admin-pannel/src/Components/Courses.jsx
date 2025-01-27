@@ -3,6 +3,8 @@ import { Modal, Button } from "react-bootstrap";
 import Header from "./Header";
 import CreateCourse from "./CreateCourse";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { Link } from "react-router-dom";
+import "./Courses.css";
 
 const Courses = () => {
   const [courses, setCourses] = useState([]);
@@ -16,13 +18,16 @@ const Courses = () => {
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/course/get/`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({}),
-        });
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/course/get/`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({}),
+          }
+        );
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -37,6 +42,24 @@ const Courses = () => {
 
     fetchCourses();
   }, []);
+
+  const renderStars = (rating) => {
+    const fullStars = Math.floor(rating);
+    const halfStar = rating % 1 !== 0;
+    const emptyStars = 5 - Math.ceil(rating);
+
+    return (
+      <>
+        {[...Array(fullStars)].map((_, index) => (
+          <i key={index} className="fas fa-star text-warning"></i>
+        ))}
+        {halfStar && <i className="fas fa-star-half-alt text-warning"></i>}
+        {[...Array(emptyStars)].map((_, index) => (
+          <i key={index} className="far fa-star text-warning"></i>
+        ))}
+      </>
+    );
+  };
 
   return (
     <>
@@ -55,7 +78,7 @@ const Courses = () => {
             </Button>
           </div>
 
-          {/* Courses Grid */}
+          {/* Course Grid */}
           <div className="row">
             {courses.map((course) => {
               const discountedPrice =
@@ -63,56 +86,82 @@ const Courses = () => {
               const discountPercentage = (
                 (course.course_discount / course.course_price) *
                 100
-              ).toFixed(0); // Calculate and round off the percentage
+              ).toFixed(0);
 
               return (
-                <div className="col-md-4 mb-4" key={course._id}>
-                  <div
-                    className="card h-100 border-0 shadow-sm"
-                    style={{ borderRadius: "10px", overflow: "hidden" }}
+                <div
+                  className="col-lg-3 col-md-4 col-sm-6 col-12 mb-4"
+                  key={course._id}
+                  style={{ cursor: "pointer" }}
+                >
+                  <Link
+                    to={`/course/${course._id}`}
+                    className="text-decoration-none"
                   >
-                    <img
-                      src={
-                        course.course_img !== "Please enter a course image"
-                          ? course.course_img
-                          : "https://via.placeholder.com/300"
-                      }
-                      className="card-img-top"
-                      alt={course.course_name}
-                      style={{ height: "200px", objectFit: "cover" }}
-                    />
-                    <div className="card-body d-flex flex-column">
-                      <h5 className="card-title text-dark">{course.course_name}</h5>
-                      <p className="card-text text-muted">{course.course_desc}</p>
-                      <p className="card-text text-muted">
-                        Duration: <span className="fw-bold">{course.course_duration}</span>
-                      </p>
-                      <div className="mt-auto">
-                        <p className="text-danger mb-0 fw-bold" style={{ fontSize: "16px" }}>
-                          <s>Rs. {course.course_price}/-</s>
+                    <div className="card course-card h-100 border-0 shadow-sm">
+                      <img
+                        src={
+                          course.course_img !== "Please enter a course image"
+                            ? course.course_img
+                            : "https://via.placeholder.com/300"
+                        }
+                        className="card-img-top"
+                        alt={course.course_name}
+                        style={{ height: "150px", objectFit: "cover" }}
+                      />
+                      <div className="card-body d-flex flex-column">
+                        <h5 className="card-title text-dark">
+                          {course.course_name}
+                        </h5>
+                        <p className="card-text text-muted course-desc">
+                          {course.course_desc}
                         </p>
-                        <p
-                          className="text-success fw-bold"
-                          style={{ fontSize: "20px" }}
-                        >
-                          Rs. {discountedPrice}/-{" "}
-                          <span className="badge bg-success ms-4">
-                            {discountPercentage}% OFF
+                        <p className="card-text text-muted">
+                          Duration:{" "}
+                          <span className="fw-bold">
+                            {course.course_duration}
                           </span>
                         </p>
-                        <Button
-                          variant="success"
-                          className="w-100 mt-2"
-                          style={{
-                            fontWeight: "bold",
-                            letterSpacing: "1px",
-                          }}
-                        >
-                          View Course
-                        </Button>
+                        <div className="mb-2">
+                          {renderStars(course.averageRating)}
+                        </div>
+                        <p className="card-text text-muted">
+                          Rating:{" "}
+                          <span className="fw-bold">
+                            {course.averageRating
+                              ? course.averageRating.toFixed(1)
+                              : "No ratings yet"}{" "}
+                            ({course.totalReviews}{" "}
+                            {course.totalReviews === 1 ? "review" : "reviews"})
+                          </span>
+                        </p>
+                        <div className="mt-auto">
+                          <p
+                            className="text-danger mb-0 fw-bold"
+                            style={{ fontSize: "14px" }}
+                          >
+                            <s>Rs. {course.course_price}/-</s>
+                          </p>
+                          <p
+                            className="text-success fw-bold"
+                            style={{ fontSize: "18px" }}
+                          >
+                            Rs. {discountedPrice}/-{" "}
+                            <span className="badge bg-success ms-4">
+                              {discountPercentage}% OFF
+                            </span>
+                          </p>
+                          <p className="text-muted mb-0">
+                            {course.course_label ? (
+                              <span className="badge bg-primary">
+                                {course.course_label}
+                              </span>
+                            ) : null}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 </div>
               );
             })}
@@ -126,7 +175,7 @@ const Courses = () => {
           <Modal.Title>Create a New Course</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <CreateCourse onSuccess={handleModalClose}/>
+          <CreateCourse onSuccess={handleModalClose} />
         </Modal.Body>
       </Modal>
     </>
