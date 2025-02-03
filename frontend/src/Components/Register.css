@@ -34,6 +34,7 @@
 .row .form-group {
   flex: 1;
 }
+
 .register-container .row {
   display: flex;
   gap: 1.5rem;
@@ -52,8 +53,8 @@
   cursor: pointer;
   transition: background 0.3s ease;
   width: auto; /* Adjust width as needed */
-  /* align-self: center;  Center-align button within its container */
 }
+
 .verification:hover {
   background: #000000;
 }
@@ -90,7 +91,7 @@ input:focus,
 select:focus {
   outline: none;
   background-color: #1d1f29;
-  color:whitesmoke;
+  color: whitesmoke;
   box-shadow: 0 0 8px rgba(59, 130, 246, 0.7);
 }
 
@@ -134,20 +135,20 @@ select:focus {
   background: #1d4ed8;
 }
 
-
 .google-login-container {
   display: flex;
   justify-content: center;
   align-items: center;
   margin-top: 20px; /* Adjust spacing as needed */
 }
+
 .form-group {
   position: relative; /* Added for absolute positioning of the icon */
 }
-.email-verification-message{
+
+.email-verification-message {
   color: gold;
   margin-left: 10px;
-
 }
 
 .username-availability-icon {
@@ -157,14 +158,6 @@ select:focus {
   transform: translateY(-50%);
   pointer-events: none; /* Prevent interactions */
 }
-
-/* Adjusting Verification buttons */
-/* .verification-buttons {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-top: 15%;
-} */
 
 .login-link {
   text-align: center;
@@ -203,3 +196,116 @@ select:focus {
   }
 }
 
+/* Styles for PhoneInput */
+/* Register.css */
+/* Add .register-container parent selector to all PhoneInput rules */
+
+.register-container .PhoneInput {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  width: 100%;
+}
+
+.register-container .PhoneInputCountry {
+  flex: 0 0 auto;
+  width: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.register-container .PhoneInputCountrySelect {
+  padding: 0.8rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  background-color: #333644;
+  color: #fff;
+  transition: all 0.3s ease;
+  width: auto;
+  max-width: 100px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: none;
+  padding-left: 30px;
+  position: relative;
+}
+
+.register-container .PhoneInputCountrySelect:focus {
+  outline: none;
+  background-color: #1d1f29;
+  color: whitesmoke;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.7);
+}
+
+.register-container .PhoneInputCountryIcon {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-60%);
+  width: 25px;
+  height: 25px;
+  pointer-events: none;
+}
+
+.register-container .PhoneInputCountrySelectArrow {
+  color: #fff;
+  margin-left: 0.2rem;
+}
+
+.register-container .PhoneInputInput {
+  flex: 1;
+  padding: 0.8rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  background-color: #333644;
+  color: #fff;
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+.register-container .PhoneInputInput::placeholder {
+  color: #999;
+}
+
+.register-container .PhoneInputInput:focus {
+  outline: none;
+  background-color: #1d1f29;
+  color: whitesmoke;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.7);
+}
+.otp-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.otp-input-container input {
+  width: 100%;
+  padding-right: 50px; /* Adjust based on button size */
+}
+
+.otp-input-container .otp-button {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+}
+
+.otp-input-container .otp-button i {
+  color: #007bff; /* Adjust color as needed */
+}
+
+.otp-input-container .otp-button:hover i {
+  color: #0056b3; /* Adjust hover color as needed */
+}

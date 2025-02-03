@@ -49,6 +49,24 @@ const UserSchema = Mongoose.Schema({
         type: Boolean,
         default: false
     },
+    profession:{
+        type: String
+    },
+    city:{
+        type: String
+    },
+    state:{
+        type: String
+    },
+    address:{
+        type: String
+    },
+    postalCode:{
+        type: String
+    },
+    country:{
+        type: String
+    },
     date:{
         type: Date,
         default: Date.now

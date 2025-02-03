@@ -17,6 +17,24 @@ const courseMemberSchema = new Schema({
         type: Date,
         default: Date.now
     },
+    profession: {
+        type: String
+    },
+    city: {
+        type: String
+    },
+    state: {
+        type: String
+    },
+    address: {
+        type: String
+    },
+    postalCode: {
+        type: String
+    },
+    country: {
+        type: String
+    },
     expiryDate: {
         type: Date
     },

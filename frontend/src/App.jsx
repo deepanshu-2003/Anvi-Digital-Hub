@@ -10,6 +10,7 @@ import Register from "./Components/Register";
 import Account from "./Components/Account";
 import Course from "./Components/Course";
 import Verification from "./Components/Verification";
+import Dashboard from "./Components/Dashboard";
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/course/:id" element={<Course />} />
         <Route path="/verify" element={<Verification />} />
+        <Route path="/dashboard" element={<Dashboard />} />
       </Routes>
     </>
   );

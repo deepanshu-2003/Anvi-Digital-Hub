@@ -9,7 +9,7 @@ const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const EmailVerify = require("../models/emailVerification");
 const MetaUser = require("../models/metaUser");
-const MobileVerification = require("../models/mobileVerification");
+const MobileVerify = require("../models/mobileVerification");
 
 const JWT_SECRET = process.env.JWT_SECRET; // Use environment variable for production
 const { OAuth2Client, auth } = require("google-auth-library");
@@ -76,9 +76,10 @@ router.post(
     body("password", "Password must be at least 8 characters long").isLength({
       min: 8,
     }),
-    body("mobile", "Please enter a valid 10-digit mobile number")
-      .isNumeric()
-      .isLength({ min: 10, max: 10 }),
+    body(
+      "mobile",
+      "Please enter a valid 10-digit mobile number"
+    ).isMobilePhone(),
     body("recaptchaToken", "Recaptcha token is required").notEmpty(), // Ensure recaptcha_token is provided
   ],
   async (req, res) => {
@@ -97,7 +98,8 @@ router.post(
         last_name,
         recaptchaToken,
       } = req.body;
-
+      let email_verified = false;
+      let mobile_verified = false;
       // Verify the reCAPTCHA token with Google's API
       const secretKey = process.env.SECRET_KEY; // Use environment variable for the secret key
       const recaptchaUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${recaptchaToken}`;
@@ -134,7 +136,17 @@ router.post(
           .status(400)
           .json({ error: "User with this mobile number already exists." });
       }
-
+      const user_email = await EmailVerify.findOne({ email });
+      if (user_email && user_email.email_verified) {
+        email_verified = true;
+        // remove entry
+        await user_email.deleteOne();
+      }
+      const user_mobile = await MobileVerify.findOne({ mobile });
+      if (user_mobile && user_mobile.verified) {
+        mobile_verified = true;
+        await user_mobile.deleteOne();
+      }
       // Hash the password
       const salt = await bcrypt.genSalt(10);
       const secured_passwd = await bcrypt.hash(password, salt);
@@ -145,8 +157,10 @@ router.post(
         last_name,
         username,
         email,
+        email_verified,
         password: secured_passwd,
         mobile,
+        mobile_verified,
       });
 
       // Generate a JWT token
@@ -399,28 +413,6 @@ router.post("/get-user", fetchUser, async (req, res) => {
   }
 });
 
-//------------------- Authenticate user --------------------
-router.post("/meta-user", async (req, res) => {
-  const token = req.header("auth_token");
-  if (!token) {
-    return res.status(400).json({ error: "Invalid token" });
-  }
-  try {
-    const user_id = jwt.verify(token, JWT_SECRET).id;
-    const user = await User.findById(user_id);
-    let status = false;
-    // Meta user check-----
-    const metaUser = await MetaUser.findOne({ user: user_id });
-    if (metaUser && metaUser.verified) {
-      status = true;
-    }
-    return res.json({ status });
-  } catch (error) {
-    console.error(error.message);
-    return res.status(500).json({ error: "Internal Server Error occurred." });
-  }
-});
-
 // ----------------------------Email Verification ---------------------------------
 const transporter = nodemailer.createTransport({
   service: "Gmail", // or another email provider
@@ -458,13 +450,13 @@ router.post(
           if (tuser.email !== email) {
             return res.status(400).json({
               errors: [
-          {
-            type: "field",
-            value: "email",
-            msg: "Email does not match the pre-registered email.",
-            path: "email",
-            location: "body",
-          },
+                {
+                  type: "field",
+                  value: "email",
+                  msg: "Email does not match the pre-registered email.",
+                  path: "email",
+                  location: "body",
+                },
               ],
             });
           }
@@ -472,11 +464,11 @@ router.post(
           return res.status(404).json({
             errors: [
               {
-          type: "field",
-          value: "email",
-          msg: "Email is already registered.",
-          path: "email",
-          location: "body",
+                type: "field",
+                value: "email",
+                msg: "Email is already registered.",
+                path: "email",
+                location: "body",
               },
             ],
           });
@@ -500,7 +492,7 @@ router.post(
         user = new EmailVerify({
           userId,
           email,
-          verified: false
+          verified: false,
         });
 
         await user.save();
@@ -618,7 +610,7 @@ router.get("/verify-email", async (req, res) => {
     }
 
     //  update if already registered in user database -------
-    if (userInUser && !userInUser.email_verified){
+    if (userInUser && !userInUser.email_verified) {
       userInUser.email_verified = true;
       await userInUser.save();
     }
@@ -629,7 +621,6 @@ router.get("/verify-email", async (req, res) => {
     }
     user.email_verified = true;
     await user.save();
-
     return res.status(200).send(successHtml("Email Verified successfully."));
   } catch (error) {
     console.error("Error verifying email:", error);
@@ -638,25 +629,23 @@ router.get("/verify-email", async (req, res) => {
 });
 
 // ------------ endpoint to check email verification each time -------------------
-router.post("/email-verify-status", async (req , res)=>{
+router.post("/email-verify-status", async (req, res) => {
   let status = false;
   try {
     const email = req.body.email;
     let user = await EmailVerify.findOne({ email });
-    if (!user){
-      return res.json({status});
+    if (!user) {
+      return res.json({ status });
     }
-    if(user.email_verified){
+    if (user.email_verified) {
       status = true;
-      return res.json({status})
+      return res.json({ status });
     }
-    return res.json({status});
+    return res.json({ status });
   } catch (error) {
-    return res.status(500).json({error:"Internal Server error occured."})
+    return res.status(500).json({ error: "Internal Server error occured." });
   }
 });
-
-
 
 // ---------------------------------------------------------------------------------
 // ----------------------------Mobile Verification ---------------------------------
@@ -667,16 +656,17 @@ const authToken = `${process.env.TWILIO_AUTH_TOKEN}`;
 const twilio_client = require("twilio")(accountSid, authToken);
 
 // Randomm OTP generation
-const generateOTP = ()=> {
+const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000);
-}
+};
 
 router.post(
   "/verify-mobile",
   [
-    body("mobile", "Please enter a valid 10-digit mobile number")
-      .isNumeric()
-      .isLength({ min: 10, max: 10 }),
+    body(
+      "mobile",
+      "Please enter a valid 10-digit mobile number"
+    ).isMobilePhone(),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -686,23 +676,250 @@ router.post(
 
     try {
       const OTP = generateOTP();
-      const {mobile} = req.body;
-      await twilio_client.messages.create({
-        body: `Your OTP for Anvi Digital Hub is ${OTP}. Please use this code to verify your mobile number. Do not share this code with anyone. It is valid for 10 minutes.`,
-        from: "+16203776217",
-        to:  `+91${mobile}`,
-      });
-      const mobileVerify = new MobileVerification({
+      const { mobile } = req.body;
+      let tuser = null;
+      const user = await User.findOne({ mobile });
+      if (req.body.preRegistered) {
+        const token = req.header("auth_token");
+        console.log(token);
+        const user_id = jwt.verify(token, JWT_SECRET).id;
+        tuser = await User.findById(user_id);
+      }
+      if (user) {
+        if (req.body.preRegistered) {
+          if (tuser.mobile !== mobile) {
+            return res
+              .status(400)
+              .json({ error: "Mobile number already registered..." });
+          }
+        } else {
+          return res
+            .status(400)
+            .json({ error: "Mobile number already registered." });
+        }
+      }
+      const already_present = await MobileVerify.findOne({ mobile });
+      console.log(already_present);
+
+      if (already_present && already_present.verified) {
+        return res.json({ msg: "Mobile number already verified" });
+      }
+      // await twilio_client.messages.create({
+      //   body: `Your OTP for Anvi Digital Hub is ${OTP}. Please use this code to verify your mobile number. Do not share this code with anyone. It is valid for 10 minutes.`,
+      //   from: "+16203776217",
+      //   to:  `${mobile}`,
+      // });
+      if (already_present) {
+        already_present.OTP = OTP;
+        already_present.verified = false;
+        createdAt = new Date();
+        await already_present.save();
+        setTimeout(async () => {
+          return res.json({ msg: `OTP is ${OTP}` });
+        }, 3000);
+        return;
+      }
+      const mobileVerify = new MobileVerify({
         mobile: req.body.mobile,
-        otp: OTP,
+        OTP,
       });
       await mobileVerify.save();
-      res.json({ msg: `OTP is ${OTP}` });
+      return res.json({ msg: `OTP is ${OTP}` });
     } catch (err) {
       console.log("Error sending message", err);
-      res.status(404).json({ error: "Bas response." });
+      return res.status(404).json({ error: "Unable to send OTP." });
     }
   }
 );
+
+router.post(
+  "/verify-mobile-otp",
+  [
+    body(
+      "mobile",
+      "Please enter a valid 10-digit mobile number"
+    ).isMobilePhone(),
+    body("OTP", "Please enter a valid OTP"),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      console.log("nope");
+      return res.status(400).json({ errors: errors.array() });
+    }
+    const { mobile, OTP } = req.body;
+    try {
+      const mobileVerify = await MobileVerify.findOne({ mobile });
+      if (!mobileVerify) {
+        return res.status(400).json({ error: "OTP Expired regenerate OTP" });
+      }
+      if (mobileVerify.OTP !== OTP && !mobileVerify.verified) {
+        return res.status(400).json({ errors: [{ msg: "Invalid OTP" }] });
+      }
+
+      mobileVerify.verified = true;
+      await mobileVerify.save();
+      const user = await User.findOne({ mobile });
+      if (user) {
+        user.mobile_verified = true;
+        await user.save();
+      }
+      return res.json({ msg: "Mobile number verified successfully" });
+    } catch (error) {
+      console.error("Error verifying mobile number:", error);
+      return res
+        .status(500)
+        .json({ errors: [{ msg: "Internal server error occurred" }] });
+    }
+  }
+);
+
+router.post("/mobile-verify-status", async (req, res) => {
+  let status = false;
+  try {
+    const mobile = req.body.mobile;
+    let user = await MobileVerify.findOne({ mobile });
+    if (!user) {
+      return res.json({ status });
+    }
+    if (user.verified) {
+      status = true;
+      return res.json({ status });
+    }
+    return res.json({ status });
+  } catch (error) {
+    return res.status(500).json({ error: "Internal Server error occured." });
+  }
+});
+
+//-----------------------------------------------------------
+// -----------------Meta User Handling ---------------------
+// ---------------------------------------------------------
+// ------------------ meta User Creation -------------------
+router.post(
+  "/meta-user",
+  [
+    body("profession", "Profession is required")
+      .notEmpty()
+      .isLength({ min: 3, max: 100 }),
+    body("addressLine", "Address is required")
+      .notEmpty()
+      .isLength({ min: 3, max: 100 }),
+    body("city", "City is required").notEmpty().isLength({ min: 3, max: 100 }),
+    body("state", "State is required")
+      .notEmpty()
+      .isLength({ min: 3, max: 100 }),
+    body("country", "Country is required")
+      .notEmpty()
+      .isLength({ min: 3, max: 100 }),
+    body("postalCode", "Postal code is required")
+      .notEmpty()
+      .isLength({ min: 3, max: 8 }),
+  ],
+  async (req, res) => {
+    const token = req.header("auth_token");
+    if (!token) {
+      return res.status(400).json({ error: "Invalid token" });
+    }
+    try {
+      const user_id = jwt.verify(token, JWT_SECRET).id;
+      const user = await User.findById(user_id);
+      if (!user) {
+        return res.status(400).json({ error: "User not Authenticated." });
+      }
+      let metaUser = await MetaUser.findOne({ user: user_id });
+      if (!metaUser) {
+        metaUser = new MetaUser({});
+      }
+      const { profession, addressLine, city, state, postalCode, country } =
+        req.body;
+      if (user.email_verified && user.mobile_verified) {
+        metaUser.user = user_id;
+        metaUser.profession = profession;
+        metaUser.verified = true;
+        metaUser.address = addressLine;
+        metaUser.city = city;
+        metaUser.state = state;
+        metaUser.postalCode = postalCode;
+        metaUser.country = country;
+        
+        await metaUser.save();
+        const emailVerify = await EmailVerify.findOne({ email: user.email });
+        if (emailVerify) {
+          await emailVerify.deleteOne();
+        }
+        const mobileVerify = await MobileVerify.findOne({
+          mobile: user.mobile,
+        });
+        if (mobileVerify) {
+          await mobileVerify.deleteOne();
+        }
+        if (
+          !user.profession ||
+          !user.address ||
+          !user.city ||
+          !user.state ||
+          !user.postalCode ||
+          !user.country
+        ) {
+          if (!user.profession) {
+            user.profession = profession;
+          }
+          if (!user.address) {
+            user.address = addressLine;
+          }
+          if (!user.city) {
+            user.city = city;
+          }
+          if (!user.state) {
+            user.state = state;
+          }
+          if (!user.postalCode) {
+            user.postalCode = postalCode;
+          }
+          if (!user.country) {
+            user.country = country;
+          }
+          await user.save();
+        }
+        return res.json({ msg: "Meta User created successfully" });
+      } else {
+        return res
+          .status(400)
+          .json({ error: "Please verify email and mobile ." });
+      }
+    } catch (error) {
+      console.error(error.message);
+      return res.status(500).json({ error: "Internal Server Error occurred." });
+    }
+  }
+);
+
+//  ----------------------- Check For Meta User ---------------------------------
+router.post("/check-meta-user", async (req, res) => {
+  const token = req.header("auth_token");
+  if (!token) {
+    return res.status(400).json({ error: "Invalid token" });
+  }
+  try {
+    const user_id = jwt.verify(token, JWT_SECRET).id;
+    const user = await User.findById(user_id);
+    let status = false;
+    const metaUser = await MetaUser.findOne({ user: user_id });
+    if (metaUser) {
+      if (user.email_verified && user.mobile_verified) {
+        if (!metaUser.verified) {
+          metaUser.verified = true;
+          await metaUser.save();
+        }
+        status = true;
+      }
+    }
+    return res.json({ status });
+  } catch (error) {
+    console.error(error.message);
+    return res.status(500).json({ error: "Internal Server Error occurred." });
+  }
+});
 
 module.exports = router;

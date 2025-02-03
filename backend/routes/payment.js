@@ -6,6 +6,7 @@ const Course = require("../models/courses");
 const { check, validationResult} = require("express-validator");
 const jwt = require("jsonwebtoken");
 const Member = require("../models/courseMember");
+const MetaUser = require("../models/metaUser");
 
 const router = express.Router();
 require("dotenv").config();
@@ -92,17 +93,25 @@ router.post("/response", async (req, res) => {
   try {
     // Save payment details in the database
     const payment = await Payment.findOne({orderId:razorpay_order_id});
-    if(!payment) return res.status(400).json({error:"Some error occured."})
+    if(!payment) return res.status(400).json({error:"Technical error occured."})
     const user = payment.user;
     const course = payment.course;
     payment.status = status;
     payment.paymentId = razorpay_payment_id;
 
     await payment.save();
-
+    // ---------- Additional Information regarding the course -------------
+    const metaUser = await MetaUser.findOne({user:user});
+    if(!metaUser) return res.status(400).json({error:"Technical error occured."});
     const newMember = new Member({
         user:user,
         course:course,
+        address:metaUser.address,
+        city:metaUser.city,
+        state:metaUser.state,
+        postalCode:metaUser.postalCode,
+        country:metaUser.country,
+        profession:metaUser.profession,
         expiryDate:null,
     });
     await newMember.save();
@@ -115,5 +124,8 @@ router.post("/response", async (req, res) => {
     return res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+
+
 
 module.exports = router;

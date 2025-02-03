@@ -41,6 +41,11 @@ const UserDropdown = ({ isLoggedIn, user, handleLogout }) => (
             </Link>
           </li>
           <li>
+            <Link className="dropdown-item" to="/dashboard">
+              Dashboard
+            </Link>
+          </li>
+          <li>
             <button className="dropdown-item" onClick={handleLogout}>
               Logout
             </button>

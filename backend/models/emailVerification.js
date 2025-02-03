@@ -3,10 +3,12 @@ const Mongoose  = require("mongoose");
 const EmailVerificationSchema = Mongoose.Schema({
     userId:{
         type: String,
-        require: true
+        require: true,
+        unique:true
     },
     email:{
         type: String,
+        unique: true,
     },
     email_verified:{
         type: Boolean,
@@ -20,4 +22,4 @@ const EmailVerificationSchema = Mongoose.Schema({
 
 });
 
-module.exports = Mongoose.model('verify',EmailVerificationSchema);
+module.exports = Mongoose.model('emailVerification',EmailVerificationSchema);

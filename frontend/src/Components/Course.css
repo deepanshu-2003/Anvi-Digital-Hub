@@ -164,6 +164,27 @@
   background: var(--hover-bg);
 }
 
+
+
+
+/* Add to Fixed Bottom Bar section */
+.dashboard-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 20px;
+}
+
+.dashboard-message {
+  flex: 1;
+  text-align: left;
+  font-size: 1rem;
+}
+
+
+
+
 /* Media Query for Responsiveness */
 @media (max-width: 768px) {
   .fixed-bottom-bar {
@@ -174,5 +195,14 @@
   .fixed-bottom-bar .btn {
       margin-top: 10px;
       width: 100%;
+  }
+  .dashboard-container {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .dashboard-message {
+    margin-bottom: 10px;
+    text-align: center;
   }
 }

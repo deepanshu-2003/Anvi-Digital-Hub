@@ -7,6 +7,7 @@ const { check, validationResult, body, query } = require("express-validator");
 const courseContent = require("../models/courseContent");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
+const courseMember = require("../models/courseMember");
 
 // @route - POST /course/add-course
 // @desc - Add a new course
@@ -320,6 +321,37 @@ router.post(
     }
   }
 );
+
+
+
+// ------------------ check for CourseMember ---------------------
+router.post("/check-member", async (req, res) => {
+  let status = false;
+  const token = req.header("auth_token");
+  if (!token) {
+    return res.status(401).json({ error: "Unauthorized Accesss" });
+  }
+  try {
+    const user_id = jwt.verify(token, JWT_SECRET);
+    
+    const user = await User.findById(user_id.id);
+    if (!user) return res.json({status: false});
+    const {course_id} = req.body;
+    const course = await Course.findById(course_id);
+    
+    if (!course) return res.json({ status:status });
+    const member = await courseMember.findOne({ user: user_id.id, course: course_id });
+    if (member && member.status === "active") {
+      status = true;
+    }
+    return res.json({status: status});
+  } catch (error) {
+    console.error("Error checking member:", error);
+    return res.json({status: false});
+  }
+}
+);
+
 
 
 

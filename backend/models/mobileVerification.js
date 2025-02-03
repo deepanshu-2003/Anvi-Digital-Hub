@@ -4,12 +4,13 @@ const mongoose = require("mongoose");
 const MobileVerificationSchema = mongoose.Schema({
     mobile:{
         type: String,
+        unique: true,
     },
-    otp:{
-        type:Number,
+    OTP:{
+        type:String,
         require:true
     },
-    mobile_verified:{
+    verified:{
         type: Boolean,
         default: false
     },

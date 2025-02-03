@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "font-awesome/css/font-awesome.min.css";
 import axios from "axios";
@@ -18,27 +18,13 @@ const Course = () => {
   const [averageRating, setAverageRating] = useState(0);
   const [totalReviews, setTotalReviews] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [showMetaModal, setshowMetaModal] = useState(false);
-  const [metaUser, setMetaUser] = useState(false);
+  const [showMetaModal, setShowMetaModal] = useState(false);
+  const [proceedPayment, setProceedPayment] = useState(false);
+  const [member, setMember] = useState(false);
 
-  const renderStars = (rating) => {
-    const fullStars = Math.floor(rating);
-    const halfStar = rating % 1 !== 0;
-    const emptyStars = 5 - Math.ceil(rating);
+  const navigate = useNavigate();
 
-    return (
-      <>
-        {[...Array(fullStars)].map((_, index) => (
-          <i key={index} className="fas fa-star text-warning"></i>
-        ))}
-        {halfStar && <i className="fas fa-star-half-alt text-warning"></i>}
-        {[...Array(emptyStars)].map((_, index) => (
-          <i key={index} className="far fa-star text-warning"></i>
-        ))}
-      </>
-    );
-  };
-
+  // Fetch course and reviews
   useEffect(() => {
     const fetchCourse = async () => {
       setLoading(true);
@@ -46,7 +32,6 @@ const Course = () => {
         const courseResponse = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/course/get/${id}`
         );
-
         const reviewsResponse = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/course/${id}/reviews`
         );
@@ -57,6 +42,23 @@ const Course = () => {
 
         const courseData = await courseResponse.json();
         const reviewsData = await reviewsResponse.json();
+
+        const memberResponse = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/course/check-member`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              auth_token: localStorage.getItem("auth_token"),
+            },
+            body: JSON.stringify({ course_id: id }),
+          }
+        );
+        if (memberResponse.ok) {
+          const memberData = await memberResponse.json();
+          setMember(memberData.status);
+          console.log("Member:", memberData.status);
+        }
 
         setCourse(courseData);
         setReviews(reviewsData.reviews);
@@ -73,21 +75,9 @@ const Course = () => {
     fetchCourse();
   }, [id]);
 
-  const handleBuyNow = async () => {
+  // Handle payment initiation
+  const initiatePayment = async () => {
     try {
-      if (!localStorage.getItem("auth_token")) {
-        setMessage({ type: "warning", text: "Please Login with a user ID" });
-        return;
-      }
-      const metaUser = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/auth/meta-user`,{},{
-        headers:{
-          auth_token:`${localStorage.getItem("auth_token")}`,
-        },
-      })
-      if (!metaUser.data.status) {
-        setshowMetaModal(true);
-        return;
-      }
       const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/payment/initiate`,
         {
@@ -124,10 +114,6 @@ const Course = () => {
               text: "Course Purchased Successfully.",
             });
           },
-          // prefill: {
-          //   email: "customer@example.com",
-          //   contact: "1234567890",
-          // },
           theme: {
             color: "#2f0fe6",
           },
@@ -142,6 +128,50 @@ const Course = () => {
       console.error("Error initiating payment:", error);
       setMessage({ type: "error", text: "Error initiating payment" });
     }
+  };
+
+  // Handle Buy Now button click
+  const handleBuyNow = () => {
+    if (!localStorage.getItem("auth_token")) {
+      setMessage({ type: "warning", text: "Please Login with a user ID" });
+      return;
+    }
+
+    // Show verification modal if payment hasn't been approved yet
+    if (!proceedPayment) {
+      setShowMetaModal(true);
+      return;
+    }
+
+    // If payment is approved, initiate payment
+    initiatePayment();
+  };
+
+  // Trigger payment after verification
+  useEffect(() => {
+    if (proceedPayment) {
+      initiatePayment();
+      setProceedPayment(false); // Reset the state after payment is initiated
+    }
+  }, [proceedPayment]);
+
+  // Render stars (existing code)
+  const renderStars = (rating) => {
+    const fullStars = Math.floor(rating);
+    const halfStar = rating % 1 !== 0;
+    const emptyStars = 5 - Math.ceil(rating);
+
+    return (
+      <>
+        {[...Array(fullStars)].map((_, index) => (
+          <i key={index} className="fas fa-star text-warning"></i>
+        ))}
+        {halfStar && <i className="fas fa-star-half-alt text-warning"></i>}
+        {[...Array(emptyStars)].map((_, index) => (
+          <i key={index} className="far fa-star text-warning"></i>
+        ))}
+      </>
+    );
   };
 
   if (error) {
@@ -190,7 +220,6 @@ const Course = () => {
               <p>
                 <strong>Category:</strong> {course.course_category || "N/A"}
               </p>
-
               <p>
                 <strong>Rating:</strong> {renderStars(averageRating)} (
                 {averageRating.toFixed(1)})
@@ -238,25 +267,46 @@ const Course = () => {
 
       {/* Fixed Bottom Bar */}
       <div className="fixed-bottom-bar">
-        <div>
-          <strong>Price: </strong>
-          <span>
-            <s>Rs. {course.course_price}</s>{" "}
-            <strong style={{ color: "green" }}>Rs. {discountedPrice}</strong>
-          </span>
-          <span style={{ marginLeft: "10px", color: "red" }}>
-            ({discountPercentage}% OFF)
-          </span>
-        </div>
-        <button className="btn btn-primary btn-lg" onClick={handleBuyNow}>
-          BUY NOW
-        </button>
+        {!member ? (
+          <>
+            <div>
+              <strong>Price: </strong>
+              <span>
+                <s>Rs. {course.course_price}</s>{" "}
+                <strong style={{ color: "green" }}>
+                  Rs. {discountedPrice}
+                </strong>
+              </span>
+              <span style={{ marginLeft: "10px", color: "red" }}>
+                ({discountPercentage}% OFF)
+              </span>
+            </div>
+            <button className="btn btn-primary btn-lg" onClick={handleBuyNow}>
+              BUY NOW
+            </button>
+          </>
+        ) : (
+          <div className="dashboard-container">
+            <span className="dashboard-message">
+              Go to Dashboard to access course content. You can visit through
+              navigating on profile tab or clicking here.
+            </span>
+            <button className="btn btn-success btn-lg" onClick={() => navigate("/dashboard")}>
+              Dashboard
+            </button>
+          </div>
+        )}
       </div>
-       {/* Verification Modal */}
-       {showMetaModal && (
+
+      {/* Verification Modal */}
+      {showMetaModal && (
         <Verification
           show={showMetaModal}
-          onHide={() => setshowMetaModal(false)}
+          onHide={() => setShowMetaModal(false)}
+          onSuccess={() => {
+            setShowMetaModal(false); // Close the modal
+            setProceedPayment(true); // Set proceedPayment to true
+          }}
         />
       )}
     </>
