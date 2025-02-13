@@ -14,19 +14,26 @@ const CourseContentSchema = mongoose.Schema({
     file_type: {
         type: String,
         required: true,
-        default:'dir'
+        default:'dir',
+        enum: ['dir', 'video', 'pdf']
     },
     parent: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'courseContent',
         default: null // default to null for root documents
     },
-    file: {
-        type: String
+    fileName: {
+        type: String,
+        default: null
+    },
+    destination: {
+        type: String,
+        default: null
     },
     visibility: {
         type: String,
-        default: "public"
+        default: "public",
+        enum: ['public', 'private']
     }
 });
 

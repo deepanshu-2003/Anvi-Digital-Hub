@@ -5,6 +5,9 @@ const cors = require('cors');
 const port = process.env.PORT || 5000; // Use environment variable for port
 const bcrypt = require("bcryptjs");
 const connectToMongo = require('./db');
+const fs = require('fs');
+const path = require('path');
+
 
 // Importing the User model
 const User = require('./models/users');
@@ -21,6 +24,15 @@ app.use('/auth', require('./routes/auth'));
 app.use('/course', require('./routes/course'));
 app.use('/general', require('./routes/general'));
 app.use('/payment', require('./routes/payment'));
+
+
+
+
+
+const uploadDir = path.join(__dirname, "../uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 // Default admin creation function
 const createDefaultAdmin = async () => {

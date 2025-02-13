@@ -34,9 +34,13 @@ body {
 
 .navbar-brand .logo {
   margin-right: 10px;
-  height: 30px;
-  width: 30%;
+  height: 50px;
+  width: 100%;
   object-fit: cover;
+}
+
+.navbar-brand .logo-text{
+  color: white;
 }
 
 .nav-link {

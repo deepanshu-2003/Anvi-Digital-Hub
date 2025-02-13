@@ -3,7 +3,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { MessageContext } from "../Context/MessageContext";
 import Message from "./Message";
-import logo from "/logo192.png"; // Adjust the path as needed
+import logo from "/digital2.png"; // Adjust the path as needed
 import axios from "axios";
 import "./Header.css";
 
@@ -188,7 +188,7 @@ const Header = () => {
             to="/"
           >
             {" "}
-            <img src={logo} alt="Logo" className="logo me-2" /> Anvi Digital Hub{" "}
+            <img src={logo} alt="Logo" className="logo me-4" /> <div className="logo-text">Anvi Digital Hub</div>{" "}
           </Link>{" "}
           {/* Offcanvas Menu */}{" "}
           <div

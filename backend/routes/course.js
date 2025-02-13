@@ -8,6 +8,14 @@ const courseContent = require("../models/courseContent");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const courseMember = require("../models/courseMember");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
+const ffmpeg = require('fluent-ffmpeg');
+ffmpeg.setFfmpegPath(ffmpegPath);
+
+
 
 // @route - POST /course/add-course
 // @desc - Add a new course
@@ -236,8 +244,6 @@ router.post(
 
 // -----------------Admin endpoints --------------------------
 //--------------------Create Directory-----------------------------
-const fs = require("fs");
-const path = require("path");
 
 router.post(
   "/make-dir",
@@ -248,6 +254,7 @@ router.post(
       .matches(/^[a-zA-Z0-9_\s]+$/), // Only alphanumeric characters, underscores, and spaces are allowed
     check("parent", "Parent ID must be a valid MongoDB ObjectId").optional().isMongoId(),
     check("course_id", "Course ID is required and must be a valid MongoDB ObjectId").isMongoId(),
+    check("visiblity","Enter a Valid visiblity Parameter").optional()
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -257,8 +264,10 @@ router.post(
 
     try {
       // Extract fields from the request
-      const { name, parent, course_id } = req.body;
+      const { name, parent, course_id} = req.body;
       const token = req.header("auth_token");
+      let {visibility} = req.body;
+      if(visibility && visibility == "private") visibility = "private";
 
       // Check token validity
       if (!token) {
@@ -293,7 +302,7 @@ router.post(
         parent: parent || null,
         course: course_id,
         file_type: "dir",
-        file: name,
+        fileName: name,
       });
 
       if (existingDir) {
@@ -305,13 +314,14 @@ router.post(
         user: user_id,
         course: course_id,
         file_type: "dir",
+        visibility:visibility,
         parent: parent || null,
-        file: name,
+        fileName: name,
       });
 
       const savedDir = await newDir.save();
 
-      res.status(201).json({
+      res.status(200).json({
         message: "Directory created successfully",
         directory: savedDir,
       });
@@ -321,6 +331,149 @@ router.post(
     }
   }
 );
+
+// ---------------- Uploading files -------------------
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "../uploads/"); // Save files in the 'uploads' directory
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname)); // Unique filename
+  },
+});
+
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = ["video/mp4", "application/pdf"];
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Invalid file type. Only MP4 videos and PDFs are allowed."), false);
+  }
+};
+
+const upload = multer({ storage, fileFilter });
+// @route   POST /course/upload-file
+// @desc    Upload a file (video or PDF) and extract frames for videos
+// @access  Admin only
+router.post(
+  "/upload-file",
+  upload.single("file"),
+  [
+    check("course_id", "Course ID is required").isMongoId(),
+    check("parent", "Parent ID must be valid").optional().isMongoId(),
+  ],
+  async (req, res) => {
+    try {
+      // 1. Validate Inputs
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      // 2. Verify Admin Access
+      const token = req.header("auth_token");
+      if (!token) return res.status(401).json({ error: "Unauthorized" });
+
+      const user_id = jwt.verify(token, JWT_SECRET).id;
+      const user = await User.findById(user_id);
+      if (!user || user.type !== "admin") {
+        return res.status(403).json({ error: "Unauthorized Access." });
+      }
+
+      // 3. Check Course and Parent Directory
+      const { course_id, parent } = req.body;
+      const course = await Course.findById(course_id);
+      if (!course) return res.status(404).json({ error: "Course not found" });
+
+      if (parent) {
+        const parentDir = await courseContent.findById(parent);
+        if (!parentDir || parentDir.file_type !== "dir") {
+          return res.status(400).json({ error: "Invalid parent directory" });
+        }
+      }
+
+      // 4. Check If File Exists
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      // 5. Process Video Files (Convert to HLS)
+      let destinationPath = req.file.path;
+      if (req.file.mimetype === "video/mp4") {
+        const hlsOutputDir = path.join(
+          __dirname,
+          "../../uploads",
+          "hls",
+          req.file.filename.split(".")[0]
+        );
+
+        // Ensure HLS directory exists
+        if (!fs.existsSync(hlsOutputDir)) {
+          fs.mkdirSync(hlsOutputDir, { recursive: true });
+        }
+
+        // Convert to HLS
+        await new Promise((resolve, reject) => {
+          ffmpeg(req.file.path)
+            .outputOptions([
+              "-profile:v baseline",
+              "-level 3.0",
+              "-start_number 0",
+              "-hls_time 10",
+              "-hls_list_size 0",
+              "-f hls",
+            ])
+            .output(`${hlsOutputDir}/playlist.m3u8`)
+            .on("end", () => {
+              console.log("HLS conversion finished");
+              resolve();
+            })
+            .on("error", (err) => {
+              console.error("HLS conversion error:", err);
+              reject(err);
+            })
+            .run();
+        });
+
+        destinationPath = path.join(
+          "hls",
+          req.file.filename.split(".")[0],
+          "playlist.m3u8"
+        );
+
+        // Remove Original Video File to Save Space
+        fs.unlinkSync(req.file.path);
+      }
+
+      // 6. Save File Info to Database
+      const newFile = new courseContent({
+        user: user_id,
+        course: course_id,
+        file_type: req.file.mimetype === "application/pdf" ? "pdf" : "video",
+        parent: parent || null,
+        fileName: req.file.originalname,
+        destination: destinationPath,
+      });
+
+      const savedFile = await newFile.save();
+
+      // 7. Return Success Response
+      res.status(201).json({
+        message: "File uploaded successfully",
+        file: savedFile,
+      });
+    } catch (error) {
+      console.error("Error:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+);
+
+
+
+
+
 
 
 
@@ -350,6 +503,64 @@ router.post("/check-member", async (req, res) => {
     return res.json({status: false});
   }
 }
+);
+
+
+
+// -------------------- Access Content -------------------------
+router.post(
+  "/show-content",
+  [
+    check("course_id", "Course ID is required").isMongoId(),
+    check("parent", "Parent ID must be valid").optional().isMongoId(),
+  ],
+  async (req, res) => {
+    try {
+      // 1. Validate Inputs
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+      
+
+      // 3. Check Course and Parent Directory
+      const { course_id, parent } = req.body;
+      // console.log(course_id,parent);
+      const course = await Course.findById(course_id);
+      if (!course) return res.status(404).json({ error: "Course not found" });
+
+      if (parent) {
+        const parentDir = await courseContent.findById(parent);
+        if (!parentDir || parentDir.file_type !== "dir") {
+          return res.status(400).json({ error: "Invalid parent directory" });
+        }
+      }
+
+      // 4. Fetch Course Content
+      const directories = await courseContent.find({
+        course: course_id,
+        parent: parent || null,
+        file_type: "dir",
+      }); 
+
+      const files = await courseContent.find({
+        course: course_id,
+        parent: parent || null,
+        file_type: { $ne: "dir" },
+      }); 
+
+      const courseContentData = {
+        directories,
+        files,
+      };
+      console.log(courseContentData);
+      
+      return res.json(courseContentData);
+    } catch (error) {
+      console.error("Error:", error);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
 );
 
 

@@ -1,195 +1,256 @@
-import React, { useEffect, useState } from 'react';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import Message from './Message';
-import { useContext } from 'react';
-import { MessageContext } from '../Context/MessageContext';
-import './Header.css';
+import React, { useEffect, useState, useContext } from "react";
+import "bootstrap/dist/css/bootstrap.min.css";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { MessageContext } from "../Context/MessageContext";
+import Message from "./Message";
+import logo from "/logo192.png"; // Adjust the path as needed
+import axios from "axios";
+import "./Header.css";
+
+// Reusable User Dropdown Component
+const UserDropdown = ({ isLoggedIn, user, handleLogout }) => (
+  <div className="dropdown me-3">
+    <button
+      className="btn user-btn dropdown-toggle"
+      type="button"
+      id="userDropdown"
+      data-bs-toggle="dropdown" 
+      aria-expanded="false"
+      aria-haspopup="true"
+    >
+      {isLoggedIn ? (
+        <img
+          src={user.profileImg || "https://via.placeholder.com/150"}
+          alt="Profile"
+          className="profile-header"
+        />
+      ) : (
+        user.name
+      )}
+    </button>
+    <ul className="dropdown-menu user-dropdown" aria-labelledby="userDropdown">
+      {isLoggedIn ? (
+        <>
+          <li className="username">{user.name}</li>
+          <li>
+            <hr className="dropdown-divider" />
+          </li>
+          <li>
+            <Link className="dropdown-item" to="/account">
+              Account
+            </Link>
+          </li>
+          <li>
+            <Link className="dropdown-item" to="/dashboard">
+              Dashboard
+            </Link>
+          </li>
+          <li>
+            <button className="dropdown-item" onClick={handleLogout}>
+              Logout
+            </button>
+          </li>
+        </>
+      ) : (
+        <li>
+          <Link className="dropdown-item" to="/login">
+            Login Now
+          </Link>
+        </li>
+      )}
+    </ul>
+  </div>
+);
 
 const Header = () => {
   const location = useLocation();
-  const navigate = useNavigate();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const { message, setMessage } = useContext(MessageContext);
-  const [user, setUser] = useState(localStorage.getItem('user') || 'Root User');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState({
+    name: localStorage.getItem("user") || "Root User",
+    profileImg: localStorage.getItem("profile_img") || null,
+  });
+  const [initialized, setInitialized] = useState(false);
+  const navigate = useNavigate();
 
-  const validateToken = async () => {
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
-      handleLogout(); // If no token, log out the user
-      return false;
-    }
-
-    try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/validate-token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ auth_token: token }),
-      });
-
-      if (!response.ok) {
-        handleLogout(); // Invalid token, log out the user
+  // Validate JWT Token and Fetch User Details
+  useEffect(() => {
+    const validateToken = async () => {
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        handleLogout();
+        navigate("/login");
         return false;
       }
 
-      const data = await response.json();
-      console.log('Token validated:', data);
-      return true; // Token is valid
-    } catch (error) {
-      console.error('Error validating token:', error);
-      handleLogout(); // On error, log out the user
-      return false;
-    }
-  };
+      try {
+        const response = await axios.post(
+          `${import.meta.env.VITE_BACKEND_URL}/auth/validate-token`,
+          { auth_token: token }
+        );
 
-  const fetchUsername = async () => {
-    const token = localStorage.getItem('auth_token');
+        if (response.status !== 200) {
+          handleLogout();
+          return false;
+        }
+        return true;
+      } catch (error) {
+        console.error("Error validating token:", error);
+        handleLogout();
+        return false;
+      }
+    };
 
-    try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/get-admin-user`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          auth_token: token,
-        },
-      });
-
-      if (!response.ok) {
-        localStorage.setItem('user', 'Root User');
-        throw new Error(`Error: ${response.status}`);
+    const fetchUserDetails = async () => {
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        setUser({ name: "Root User", profileImg: null });
+        localStorage.setItem("user", "Root User");
+        localStorage.setItem("profile_img", null);
+        return;
       }
 
-      const { first_name, last_name } = await response.json();
-      const username = `${first_name} ${last_name}`;
-      setUser(username);
-      localStorage.setItem('user', username);
-    } catch (error) {
-      console.error('Error fetching username:', error);
-      setUser('Root User');
-      localStorage.setItem('user', 'Root User');
-    }
-  };
+      try {
+        const response = await axios.post(
+          `${import.meta.env.VITE_BACKEND_URL}/auth/get-user`,
+          {},
+          { headers: { auth_token: token } }
+        );
 
+        if (response.status !== 200) {
+          throw new Error(`Error: ${response.status}`);
+        }
 
+        const { first_name, last_name, profile_img, email_verified } =
+          response.data;
+        const username = `${first_name} ${last_name}`;
+        setUser({ name: username, profileImg: profile_img });
+        localStorage.setItem("user", username);
+        localStorage.setItem("profile_img", profile_img);
+      } catch (error) {
+        console.error("Error fetching user details:", error);
+        setUser({ name: "Root User", profileImg: null });
+        localStorage.setItem("user", "Root User");
+        localStorage.setItem("profile_img", null);
+      }
+    };
 
-  
-  
-  
-  useEffect(() => {
     const initializeUser = async () => {
       const isValidToken = await validateToken();
       if (!isValidToken) return;
-      
-      const token = localStorage.getItem('auth_token');
-      setIsLoggedIn(!!token);      
-      const username = localStorage.getItem('user');
-      if (!username) {
-        fetchUsername();
-        console.log('Fetching username');
-      } else {
-        setUser(username);
+
+      const token = localStorage.getItem("auth_token");
+      setIsLoggedIn(!!token);
+
+      if (!localStorage.getItem("user")) {
+        await fetchUserDetails();
       }
     };
-    
-    initializeUser();
-  }, []);
 
+    if (!initialized) {
+      initializeUser().then(() => setInitialized(true));
+    }
+  }, [initialized]);
+
+  // Logout Functionality
   const handleLogout = () => {
     localStorage.clear();
     setIsLoggedIn(false);
-    setUser('Root User');
-    navigate('/login');
+    setUser({ name: "Root User", profileImg: null });
+    setInitialized(false);
+    // navigate("/");
   };
 
+  // Active Menu Link Check
   const isActive = (path) => location.pathname === path;
 
   return (
     <>
-    <header className="custom-header text-white shadow-sm">
-      <nav className="navbar navbar-expand-lg navbar-dark container py-2">
-        <button
-          className="navbar-toggler me-3"
-          type="button"
-          data-bs-toggle="offcanvas"
-          data-bs-target="#offcanvasNavbar"
-          aria-controls="offcanvasNavbar"
-          aria-label="Toggle navigation"
-        >
-          <span className="navbar-toggler-icon"></span>
-        </button>
-        <Link className="navbar-brand fw-bold d-flex align-items-center" to="/">
-          <img src="logo192.png" alt="Logo" className="logo me-2" />
-          Anvi Digital Hub
-        </Link>
-        <div className="offcanvas offcanvas-start" id="offcanvasNavbar" data-bs-scroll="true">
-          <div className="offcanvas-header">
-            <h5 className="offcanvas-title">Menu</h5>
-            <button
-              className="btn-close"
-              data-bs-dismiss="offcanvas"
-              aria-label="Close"
-            ></button>
-          </div>
-          <div className="offcanvas-body">
-            <ul className="navbar-nav ms-auto">
-              {['Home', 'Services', 'Courses', 'About', 'Contact'].map((menu) => (
-                <li className="nav-item" key={menu}>
-                  <Link
-                    className={`nav-link fw-semibold ${isActive(`/${menu.toLowerCase()}`) ? 'active' : ''}`}
-                    to={`/${menu.toLowerCase()}`}
-                  >
-                    {menu}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-        <div className="d-flex align-items-center ms-lg-4 user-section">
-          <div className="dropdown">
-            <button
-              className="btn user-btn dropdown-toggle"
-              type="button"
-              id="userDropdown"
-              data-bs-toggle="dropdown"
-            >
-              {user}
-            </button>
-            <ul className="dropdown-menu user-dropdown">
-              {isLoggedIn ? (
-                <>
-                  <li>
-                    <Link className="dropdown-item" to="/account">
-                      Account
-                    </Link>
-                  </li>
-                  <li>
-                    <button className="dropdown-item" onClick={handleLogout}>
-                      Logout
-                    </button>
-                  </li>
-                </>
-              ) : (
-                <li>
-                  <Link className="dropdown-item" to="/login">
-                    Login Now
-                  </Link>
-                </li>
-              )}
-            </ul>
-          </div>
-        </div>
-      </nav>
-    </header>
-    {message && (
+      {" "}
+      <header className="custom-header text-white shadow-sm py-0">
+        {" "}
+        <nav className="navbar navbar-expand-lg navbar-dark container my-1">
+          {" "}
+          {/* Offcanvas Navigation */}{" "}
+          <button
+            className="navbar-toggler me-3"
+            type="button"
+            data-bs-toggle="offcanvas"
+            data-bs-target="#offcanvasNavbar"
+            aria-controls="offcanvasNavbar"
+          >
+            {" "}
+            <i className="fas fa-bars"></i> {/* Font Awesome Icon */}{" "}
+          </button>{" "}
+          <Link
+            className="navbar-brand fw-bold d-flex align-items-center"
+            to="/"
+          >
+            {" "}
+            <img src={logo} alt="Logo" className="logo me-2" /> Anvi Digital Hub{" "}
+          </Link>{" "}
+          {/* Offcanvas Menu */}{" "}
+          <div
+            className="offcanvas offcanvas-start"
+            id="offcanvasNavbar"
+            data-bs-scroll="true"
+          >
+            {" "}
+            <div className="offcanvas-header">
+              {" "}
+              <h5 className="offcanvas-title">Anvi Digital Hub</h5>{" "}
+              <button
+                className="btn-close unique-close-button"
+                data-bs-dismiss="offcanvas"
+                aria-label="Close"
+              >
+                {" "}
+                <i className="fas fa-times-circle"></i>{" "}
+                {/* Font Awesome Close Icon */}{" "}
+              </button>{" "}
+            </div>{" "}
+            <div className="offcanvas-body">
+              {" "}
+              <ul className="navbar-nav ms-auto">
+                {" "}
+                {["Home", "Services", "Courses", "About", "Contact"].map(
+                  (menu) => (
+                    <li className="nav-item" key={menu}>
+                      {" "}
+                      <Link
+                        className={`nav-link fw-semibold ${
+                          isActive(`/${menu.toLowerCase()}`) ? "active" : ""
+                        }`}
+                        to={`/${menu.toLowerCase()}`}
+                      >
+                        {" "}
+                        {menu}{" "}
+                      </Link>{" "}
+                    </li>
+                  )
+                )}{" "}
+              </ul>{" "}
+            </div>{" "}
+          </div>{" "}
+          {/* User Section */}{" "}
+          <UserDropdown
+            isLoggedIn={isLoggedIn}
+            user={user}
+            handleLogout={()=>{
+              navigate("/");
+              handleLogout();
+            }}
+          />{" "}
+        </nav>{" "}
+      </header>{" "}
+      {/* Message Component */}{" "}
+      {message && (
         <Message
           type={message.type}
           message={message.text}
           onClose={() => setMessage(null)}
         />
-      )}
+      )}{" "}
     </>
   );
 };
