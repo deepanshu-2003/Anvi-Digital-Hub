@@ -14,7 +14,6 @@ const Login = () => {
   const { message, setMessage } = useContext(MessageContext);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [recaptchaToken, setRecaptchaToken] = useState(null); // Store the token
   const navigate = useNavigate();
 
   // Check if user is already logged in
@@ -35,10 +34,7 @@ const Login = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    if (!recaptchaToken) {
-      setMessage({ type: "error", text: "Please verify the reCAPTCHA!" });
-      return;
-    }
+    
 
     try {
       const response = await fetch(
@@ -48,7 +44,7 @@ const Login = () => {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ username, password, recaptchaToken }),
+          body: JSON.stringify({ username, password}),
         }
       );
 
@@ -118,12 +114,7 @@ const Login = () => {
             </div>
           </div>
 
-          <ReCAPTCHA
-            className="recaptcha mb-3"
-            sitekey={`${import.meta.env.VITE_SITE_KEY}`} // Replace with your actual site key
-            onChange={(token) => setRecaptchaToken(token)} // Capture the token
-            onExpired={() => setRecaptchaToken(null)} // Handle token expiration
-          />
+         
 
           <button type="submit" className="login-button">
             Login

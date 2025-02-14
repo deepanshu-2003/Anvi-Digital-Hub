@@ -208,7 +208,6 @@ router.post(
   "/rating",
   [
     check("course_id", "Course ID is required").not().isEmpty(),
-    check("user_id", "User ID is required").not().isEmpty(),
     check("rating", "Rating is required").isFloat({ min: 1, max: 5 }),
     check("review", "Review is required").not().isEmpty(),
   ],
@@ -218,11 +217,21 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
     }
     const { course_id, user_id, rating, review } = req.body;
+    const token = req.header("auth_token");
+    if (!token) {
+      return res.status(401).json({ error: "Unauthorized Accesss" });
+    } 
+      
     try {
+      //verifying token from admin only
+      const user_id = jwt.verify(token, JWT_SECRET).id;
       const course = await Course.findById(course_id);
       if (!course) {
         return res.status(404).json({ error: "Course not found" });
       }
+      const member = await courseMember.findOne({user:user_id,course:course_id,status:"active"});
+      if (!member)
+        return res.status(401).json({ error: "Unauthorized Accesss" });
       const user = await User.findById(user_id);
       if (!user) {
         return res.status(404).json({ error: "User not found" });

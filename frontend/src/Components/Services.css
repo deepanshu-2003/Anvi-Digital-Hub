@@ -1,0 +1,42 @@
+.service-card {
+	transition: transform 0.3s ease;
+	overflow: hidden;
+}
+
+.service-card:hover {
+	transform: translateY(-5px);
+}
+
+.card-img-wrapper {
+	position: relative;
+	overflow: hidden;
+}
+
+.card-img-top {
+	height: 200px;
+	object-fit: cover;
+	transition: transform 0.3s ease;
+}
+
+.card-img-overlay {
+	background: rgba(0, 0, 0, 0.5);
+	opacity: 0;
+	transition: opacity 0.3s ease;
+}
+
+.service-card:hover .card-img-overlay {
+	opacity: 1;
+}
+
+.service-card:hover .card-img-top {
+	transform: scale(1.1);
+}
+
+.btn-outline-primary {
+	transition: all 0.3s ease;
+}
+
+.btn-outline-primary:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}

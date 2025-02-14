@@ -267,8 +267,7 @@ router.post(
     }),
     body("password", "Password must be at least 8 characters long").isLength({
       min: 8,
-    }),
-    body("recaptchaToken", "reCAPTCHA token is required").notEmpty(), // Ensure reCAPTCHA token is provided
+    })
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -276,31 +275,10 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { username, password, recaptchaToken } = req.body;
+    const { username, password } = req.body;
 
     try {
-      // Verify reCAPTCHA token with Google's API
-      const recaptchaResponse = await fetch(
-        `https://www.google.com/recaptcha/api/siteverify`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: new URLSearchParams({
-            secret: process.env.SECRET_KEY, // Your secret key from environment variable
-            response: recaptchaToken,
-          }),
-        }
-      );
-      const recaptchaResult = await recaptchaResponse.json();
-      // console.log(recaptchaResult);
-
-      if (!recaptchaResult.success) {
-        return res
-          .status(400)
-          .json({ error: "Invalid reCAPTCHA. Please try again." });
-      }
+     
 
       // Find user by username
       let user = await User.findOne({ username });

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Form, Button } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
-import Message from "./Message"; // Import the Message component
+import Message from "./Message";
 
 const CreateCourse = ({onSuccess}) => {
   const [courseData, setCourseData] = useState({
@@ -13,13 +13,28 @@ const CreateCourse = ({onSuccess}) => {
     course_duration: "",
   });
 
-  const [authToken] = useState(localStorage.getItem("auth_token")); // Replace with actual token
-  const [message, setMessage] = useState(null); // Message state
+  const [imageInputType, setImageInputType] = useState('url');
+  const [authToken] = useState(localStorage.getItem("auth_token"));
+  const [message, setMessage] = useState(null);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setCourseData({ ...courseData, [name]: value });
   };
+
+  const handleImageChange = async (e) => {
+    if (imageInputType === 'file' && e.target.files?.[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCourseData({ ...courseData, course_img: reader.result });
+      };
+      reader.readAsDataURL(file);
+    } else {
+      handleInputChange(e);
+    }
+  };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -81,14 +96,15 @@ const CreateCourse = ({onSuccess}) => {
 
         <Form.Group className="mb-3" controlId="courseDesc">
           <Form.Label>Course Description</Form.Label>
-          <Form.Control
-            type="text"
+            <Form.Control
+            as="textarea"
+            rows={3}
             placeholder="Enter course description"
             name="course_desc"
             value={courseData.course_desc}
             onChange={handleInputChange}
             required
-          />
+            />
         </Form.Group>
 
         <Form.Group className="mb-3" controlId="coursePrice">
@@ -115,8 +131,33 @@ const CreateCourse = ({onSuccess}) => {
           />
         </Form.Group>
 
+        <Form.Group className="mb-3">
+          <Form.Label>Image Input Method</Form.Label>
+          <div>
+          <Form.Check
+            inline
+            type="radio"
+            label="URL"
+            name="imageInputType"
+            value="url"
+            checked={imageInputType === 'url'}
+            onChange={(e) => setImageInputType(e.target.value)}
+          />
+          <Form.Check
+            inline
+            type="radio"
+            label="Upload File"
+            name="imageInputType"
+            value="file"
+            checked={imageInputType === 'file'}
+            onChange={(e) => setImageInputType(e.target.value)}
+          />
+          </div>
+        </Form.Group>
+
         <Form.Group className="mb-3" controlId="courseImage">
-          <Form.Label>Course Image URL</Form.Label>
+          <Form.Label>Course Image {imageInputType === 'url' ? 'URL' : 'Upload'}</Form.Label>
+          {imageInputType === 'url' ? (
           <Form.Control
             type="text"
             placeholder="Enter course image URL"
@@ -125,6 +166,14 @@ const CreateCourse = ({onSuccess}) => {
             onChange={handleInputChange}
             required
           />
+          ) : (
+          <Form.Control
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
+            required={!courseData.course_img}
+          />
+          )}
         </Form.Group>
 
         <Form.Group className="mb-3" controlId="courseDuration">
@@ -139,7 +188,7 @@ const CreateCourse = ({onSuccess}) => {
           />
         </Form.Group>
 
-        <Button variant="primary" type="submit">
+        <Button variant="primary" type="submit" className="w-100">
           Create Course
         </Button>
       </Form>
