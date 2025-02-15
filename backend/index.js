@@ -16,8 +16,24 @@ const User = require('./models/users');
 connectToMongo();
 
 // Middleware
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'auth_token', 'range'],
+  exposedHeaders: ['Content-Length', 'Content-Range', 'Accept-Ranges'],
+  credentials: true
+}));
+
+// Increase timeout for video streaming
+app.use((req, res, next) => {
+  res.setTimeout(30 * 60 * 1000); // 30 minutes timeout
+  next();
+});
+
 app.use(express.json());
-app.use(cors()); // Configure CORS
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Importing routes
 app.use('/auth', require('./routes/auth'));

@@ -377,6 +377,28 @@ router.post("/get-admin-user", fetchUser, async (req, res) => {
   }
 });
 
+// Add user type endpoint
+router.get('/user-type', async (req, res) => {
+  try {
+    const token = req.header('auth_token');
+    if (!token) {
+      return res.status(401).json({ error: 'Please authenticate using a valid token' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(decoded.id).select('type');
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ type: user.type });
+  } catch (error) {
+    console.error('Error in user-type:', error.message);
+    res.status(500).send('Server Error');
+  }
+});
+
 // --------------- Fetch User ----------------------
 router.post("/get-user", fetchUser, async (req, res) => {
   const user_id = req.user.id;

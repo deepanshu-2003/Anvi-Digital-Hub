@@ -3,6 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "font-awesome/css/font-awesome.min.css";
 import axios from "axios";
+import Hls from 'hls.js';
+
 import Spinner from "react-bootstrap/Spinner";
 import Header from "./Header";
 import "./CourseView.css";
@@ -22,7 +24,9 @@ const CourseView = () => {
   const [loadingCourse, setLoadingCourse] = useState(true);
   const [loadingContent, setLoadingContent] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState({});
+  const [fileStatuses, setFileStatuses] = useState({});
   const [uploading, setUploading] = useState(false);
   const [parent, setParent] = useState(null);
   const [contentDir, setContentDir] = useState([]);
@@ -33,6 +37,107 @@ const CourseView = () => {
   const [newFolderName, setNewFolderName] = useState("");
   const [folderVisibility, setFolderVisibility] = useState("public");
   const [creatingFolder, setCreatingFolder] = useState(false);
+  const [showFileModal, setShowFileModal] = useState(false);
+  const [currentFile, setCurrentFile] = useState(null);
+  const [fileLoading, setFileLoading] = useState(false);
+  const [fileError, setFileError] = useState(null);
+  const [userType, setUserType] = useState(null);
+
+  useEffect(() => {
+    const fetchUserType = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/auth/user-type`, {
+          headers: { auth_token: token }
+        });
+        setUserType(response.data.type);
+      } catch (error) {
+        console.error('Error fetching user type:', error);
+      }
+    };
+    fetchUserType();
+  }, []);
+
+  useEffect(() => {
+    if (currentFile?.file_type === 'video') {
+      const videoElement = document.getElementById('videoPlayer');
+      if (Hls.isSupported() && videoElement) {
+        const token = localStorage.getItem('auth_token');
+        const hls = new Hls({
+          xhrSetup: function(xhr) {
+            xhr.setRequestHeader('auth_token', token);
+          },
+          enableWorker: true,
+          debug: true
+        });
+
+        const videoUrl = `${import.meta.env.VITE_BACKEND_URL}/course/stream/${currentFile._id}`;
+        
+        hls.loadSource(videoUrl);
+        hls.attachMedia(videoElement);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          setFileLoading(false);
+          videoElement.play().catch(error => {
+            console.error('Error auto-playing:', error);
+          });
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          console.error('HLS error:', data);
+          if (data.fatal) {
+            switch(data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                hls.startLoad(); // Try to recover from network error
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                hls.recoverMediaError(); // Try to recover from media error
+                break;
+              default:
+                setFileError('An error occurred while playing the video. Please try again.');
+                hls.destroy();
+                break;
+            }
+          }
+        });
+
+        return () => {
+          hls.destroy();
+        };
+      } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+        const token = localStorage.getItem('auth_token');
+        videoElement.src = `${import.meta.env.VITE_BACKEND_URL}/course/stream/${currentFile._id}?token=${token}`;
+        videoElement.addEventListener('loadedmetadata', () => {
+          setFileLoading(false);
+          videoElement.play().catch(console.error);
+        });
+      } else {
+        setFileError('Your browser does not support HLS video playback.');
+      }
+    }
+  }, [currentFile]);
+
+
+
+
+
+
+
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'uploading':
+        return 'text-primary';
+      case 'processing':
+        return 'text-warning';
+      case 'completed':
+        return 'text-success';
+      case 'error':
+        return 'text-danger';
+      default:
+        return 'text-secondary';
+    }
+  };
 
   const navigate = useNavigate();
 
@@ -85,6 +190,48 @@ const CourseView = () => {
     fetchContent();
   }, [id, parent]);
 
+  // Add useEffect for handling video processing status
+  useEffect(() => {
+    // Update file statuses when processing videos
+    const processingFiles = Object.entries(fileStatuses).filter(([_, status]) => status === 'processing');
+    if (processingFiles.length > 0) {
+      const interval = setInterval(async () => {
+        try {
+          const contentRes = await axios.post(
+            `${import.meta.env.VITE_BACKEND_URL}/course/show-content`,
+            {
+              course_id: id,
+              ...(parent && { parent: parent }),
+            }
+          );
+          
+          // Check if processing files are now available
+          const newFiles = contentRes.data.files;
+          processingFiles.forEach(([fileName]) => {
+            const fileFound = newFiles.find(f => f.fileName === fileName);
+            if (fileFound) {
+              setFileStatuses(prev => ({
+                ...prev,
+                [fileName]: 'completed'
+              }));
+            }
+          });
+
+          // If all files are processed, clear interval
+          if (newFiles.length >= processingFiles.length) {
+            clearInterval(interval);
+            setContentDir(contentRes.data.directories);
+            setContentFiles(contentRes.data.files);
+          }
+        } catch (error) {
+          console.error('Error checking processing status:', error);
+        }
+      }, 5000); // Check every 5 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [fileStatuses, id, parent]);
+
   // Render stars for rating
   const renderStars = (rating) => {
     const fullStars = Math.floor(rating);
@@ -106,39 +253,67 @@ const CourseView = () => {
 
   // Handle file selection
   const handleFileChange = (e) => {
-    setSelectedFile(e.target.files[0]);
+    const files = Array.from(e.target.files);
+    const validFiles = files.filter(file => {
+      const isValid = file.type === 'video/mp4' || file.type === 'application/pdf';
+      if (!isValid) {
+        setMessage({ type: 'error', text: `${file.name} is not a valid file type. Only MP4 and PDF files are allowed.` });
+      }
+      return isValid;
+    });
+    
+    // Set initial status for each file
+    const initialStatuses = {};
+    validFiles.forEach(file => {
+      initialStatuses[file.name] = 'pending';
+    });
+    setFileStatuses(initialStatuses);
+    setSelectedFiles(validFiles);
   };
 
   // Handle file upload
   const handleUpload = async () => {
-    if (!selectedFile) {
-      setMessage("Please select a file to upload.");
+    if (selectedFiles.length === 0) {
+      setMessage({ type: 'error', text: 'Please select files to upload.' });
       return;
     }
 
     setUploading(true);
-
     const formData = new FormData();
-    formData.append("file", selectedFile);
-    formData.append("course_id", id);
-    if (parent) formData.append("parent", parent);
+    
+    selectedFiles.forEach(file => {
+      formData.append('files', file);
+    });
+    formData.append('course_id', id);
+    if (parent) formData.append('parent', parent);
 
     try {
-      const token = localStorage.getItem("auth_token");
-      await axios.post(
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/course/upload-file`,
         formData,
         {
           headers: {
-            "Content-Type": "multipart/form-data",
-            auth_token: token,
+            'Content-Type': 'multipart/form-data',
+            auth_token: token
           },
+          onUploadProgress: (progressEvent) => {
+            const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            const newProgress = {};
+            selectedFiles.forEach(file => {
+              newProgress[file.name] = progress;
+            });
+            setUploadProgress(newProgress);
+          }
         }
       );
 
-      setMessage("File uploaded successfully!");
-      setShowUploadModal(false);
-      setSelectedFile(null);
+      // Update file statuses based on response
+      const newFileStatuses = {};
+      response.data.files.forEach(file => {
+        newFileStatuses[file.originalName] = file.status;
+      });
+      setFileStatuses(newFileStatuses);
 
       // Refresh content after upload
       const contentRes = await axios.post(
@@ -150,13 +325,24 @@ const CourseView = () => {
       );
       setContentDir(contentRes.data.directories);
       setContentFiles(contentRes.data.files);
+
+      setMessage({ type: 'success', text: 'Files uploaded successfully' });
     } catch (error) {
-      console.error("Error uploading file:", error);
-      setMessage("Failed to upload file.");
+      console.error('Error uploading files:', error);
+      setMessage({ type: 'error', text: 'Failed to upload files' });
+      const newFileStatuses = {};
+      selectedFiles.forEach(file => {
+        newFileStatuses[file.name] = 'error';
+      });
+      setFileStatuses(newFileStatuses);
     } finally {
       setUploading(false);
+      setSelectedFiles([]);
+      setUploadProgress({});
+      setShowUploadModal(false);
     }
   };
+
 
   // Handle Create Folder Click
   const handleCreateFolder = async () => {
@@ -176,16 +362,16 @@ const CourseView = () => {
 
     try {
       const token = localStorage.getItem("auth_token");
-      const response = await axios.post(
+        await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/course/make-dir`,
         payload,
         {
           headers: { auth_token: token },
         }
-      );
-      // setMessage("Folder created successfully!");
+        );
 
-      setLoadingContent(true);
+        setLoadingContent(true);
+
       // Refresh content after upload
       const contentRes = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/course/show-content`,
@@ -223,6 +409,10 @@ const CourseView = () => {
     setPwd([...pwd, newParent]);
   };
 
+  const canAccessFile = (file) => {
+    return userType === 'admin' || file.visibility !== 'private';
+  };
+
   const handleBack = () => {
     if (pwd.length > 0) {
       const newPwd = [...pwd];
@@ -249,22 +439,30 @@ const CourseView = () => {
     100
   ).toFixed(0);
 
-  //  Handle File Playing
-  const handleFilePlay = (file) => {
-    // setMessage({type:"success",text:"File Played successfully...."})
+  // Handle File Playing
+  const handleFilePlay = async (file) => {
+    setFileLoading(true);
+    setFileError(null);
+    setCurrentFile(file);
+    setShowFileModal(true);
   };
 
   // Handle edit button click
   const handleEdit = () => {
     console.log("Edit course:", course);
-    if (loadingCourse) {
-      return (
-        <div className="d-flex justify-content-center my-5">
-          <Spinner animation="border" variant="primary" />
-        </div>
-      );
-    }
   };
+
+  if (loadingCourse) {
+    return (
+      <div className="d-flex justify-content-center my-5">
+        <Spinner animation="border" variant="primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return <div className="alert alert-danger">{error}</div>;
+  }
 
   return (
     <>
@@ -362,29 +560,27 @@ const CourseView = () => {
                   >
                     Root
                   </div>
-                  {pwd.map((directory, index) => (
-                    <>
+                    {pwd.map((directory, index) => (
+                    <React.Fragment key={directory._id}>
                       <span className="text text-dark">
-                        {" "}
-                        <i
-                          className="fa-solid fa-arrow-right mx-3"
-                          style={{ marginTop: "5px" }}
-                        ></i>{" "}
+                      <i
+                        className="fa-solid fa-arrow-right mx-3"
+                        style={{ marginTop: "5px" }}
+                      ></i>
                       </span>
                       <div
-                        key={directory._id}
-                        className=""
-                        style={{ cursor: "pointer", fontSize: "18px" }}
-                        onClick={() => {
-                          // Navigate back to the selected directory
-                          setParent(directory._id);
-                          setPwd(pwd.slice(0, index + 1)); // Keep the path up to the clicked directory
-                        }}
+                      className=""
+                      style={{ cursor: "pointer", fontSize: "18px" }}
+                      onClick={() => {
+                        setParent(directory._id);
+                        setPwd(pwd.slice(0, index + 1));
+                      }}
                       >
-                        {directory.fileName}
+                      {directory.fileName}
                       </div>
-                    </>
-                  ))}
+                    </React.Fragment>
+                    ))}
+
                 </div>
 
                 <h4 className="my-3">
@@ -446,30 +642,32 @@ const CourseView = () => {
                   {/* Display Files */}
                   {contentFiles.length > 0 && (
                     <div className="row">
-                      {contentFiles.map((file) => (
+                        {contentFiles.map((file) => (
                         <div key={file._id} className="mb-3">
+                          {canAccessFile(file) ? (
                           <div
                             className="file-card p-3 d-flex align-items-center justify-content-between shadow-sm"
                             onClick={() => handleFilePlay(file)}
                             style={{
-                              cursor: "pointer",
-                              borderRadius: "10px",
-                              background: "#ffffff",
-                              border: "1px solid #ddd",
+                            cursor: "pointer",
+                            borderRadius: "10px",
+                            background: "#ffffff",
+                            border: "1px solid #ddd",
                             }}
                           >
                             <div className="d-flex align-items-center">
-                              {file.file_type === "video" ? (
-                                <i className="fas fa-file-video fa-2x text-success"></i>
-                              ) : (
-                                <i className="fas fa-file-pdf fa-2x text-danger"></i>
-                              )}
-                              <span className="ms-2">{file.fileName}</span>
+                            {file.file_type === "video" ? (
+                              <i className="fas fa-file-video fa-2x text-success"></i>
+                            ) : (
+                              <i className="fas fa-file-pdf fa-2x text-danger"></i>
+                            )}
+                            <span className="ms-2">{file.fileName}</span>
                             </div>
                             {file.visibility === "private" && (
-                              <i className="fas fa-lock text-danger"></i>
+                            <i className="fas fa-lock text-danger"></i>
                             )}
                           </div>
+                          ) : null}
                         </div>
                       ))}
                     </div>
@@ -505,78 +703,211 @@ const CourseView = () => {
         </div>
       </div>
 
-      {/* File Upload Modal */}
-      <Modal show={showUploadModal} onHide={() => setShowUploadModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Upload File</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <Form.Group controlId="formFile" className="mb-3">
-              <Form.Label>Select a file to upload</Form.Label>
-              <Form.Control type="file" onChange={handleFileChange} />
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowUploadModal(false)}>
-            Close
-          </Button>
-          <Button variant="primary" onClick={handleUpload} disabled={uploading}>
-            {uploading ? "Uploading..." : "Upload"}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+            {/* File Upload Modal */}
+            <Modal show={showUploadModal} onHide={() => setShowUploadModal(false)}>
+            <Modal.Header closeButton>
+              <Modal.Title>Upload Files</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <Form>
+              <Form.Group controlId="formFile" className="mb-3">
+                <Form.Label>Select files to upload (PDF or MP4 only)</Form.Label>
+                <Form.Control type="file" multiple onChange={handleFileChange} accept=".pdf,.mp4" />
+              </Form.Group>
+              {selectedFiles.map(file => (
+                <div key={file.name} className="file-item mb-3">
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <span>
+                  {file.type === 'video/mp4' ? 
+                    <i className="fas fa-file-video text-success me-2"></i> : 
+                    <i className="fas fa-file-pdf text-danger me-2"></i>
+                  }
+                  {file.name}
+                  </span>
+                  <span className={`${getStatusColor(fileStatuses[file.name])}`}>
+                  {fileStatuses[file.name] === 'processing' ? (
+                    <span>
+                    <i className="fas fa-cog fa-spin me-2"></i>
+                    Processing
+                    </span>
+                  ) : fileStatuses[file.name] ? 
+                    fileStatuses[file.name].charAt(0).toUpperCase() + fileStatuses[file.name].slice(1) : 
+                    'Pending'
+                  }
+                  </span>
+                </div>
+                {uploadProgress[file.name] > 0 && (
+                  <div className="progress" style={{ height: "20px" }}>
+                  <div 
+                    className={`progress-bar ${
+                    fileStatuses[file.name] === 'processing' 
+                      ? 'progress-bar-striped progress-bar-animated bg-warning' 
+                      : fileStatuses[file.name] === 'completed'
+                      ? 'bg-success'
+                      : ''
+                    }`}
+                    role="progressbar" 
+                    style={{
+                    width: `${fileStatuses[file.name] === 'processing' ? 100 : uploadProgress[file.name]}%`
+                    }}
+                    aria-valuenow={fileStatuses[file.name] === 'processing' ? 100 : uploadProgress[file.name]} 
+                    aria-valuemin="0" 
+                    aria-valuemax="100"
+                  >
+                    {fileStatuses[file.name] === 'processing' ? 
+                    'Converting to HLS format...' : 
+                    `${uploadProgress[file.name]}%`
+                    }
+                  </div>
+                  </div>
+                )}
+                </div>
+              ))}
+              </Form>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="secondary" onClick={() => setShowUploadModal(false)}>
+              Close
+              </Button>
+              <Button variant="primary" onClick={handleUpload} disabled={uploading || selectedFiles.length === 0}>
+              {uploading ? 'Uploading...' : 'Upload'}
+              </Button>
+            </Modal.Footer>
+            </Modal>
 
-      {/* Create Folder Modal */}
-      <Modal
-        show={showCreateFolderModal}
-        onHide={() => setShowCreateFolderModal(false)}
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Create New Folder</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <Form.Group controlId="folderName">
-              <Form.Label>Folder Name</Form.Label>
-              <Form.Control
+            {/* Create Folder Modal */}
+            <Modal
+            show={showCreateFolderModal}
+            onHide={() => setShowCreateFolderModal(false)}
+            >
+            <Modal.Header closeButton>
+              <Modal.Title>Create New Folder</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <Form>
+              <Form.Group controlId="folderName">
+                <Form.Label>Folder Name</Form.Label>
+                <Form.Control
                 type="text"
                 placeholder="Enter folder name"
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
-              />
-            </Form.Group>
-            <Form.Group controlId="folderVisibility" className="mt-3">
-              <Form.Label>Visibility</Form.Label>
-              <Form.Select
+                />
+              </Form.Group>
+              <Form.Group controlId="folderVisibility" className="mt-3">
+                <Form.Label>Visibility</Form.Label>
+                <Form.Select
                 value={folderVisibility}
                 onChange={(e) => setFolderVisibility(e.target.value)}
-              >
+                >
                 <option value="public">Public</option>
                 <option value="private">Private</option>
-              </Form.Select>
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button
-            variant="secondary"
-            onClick={() => setShowCreateFolderModal(false)}
-          >
-            Close
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleCreateFolder}
-            disabled={creatingFolder}
-          >
-            {creatingFolder ? "Creating..." : "Create Folder"}
-          </Button>
-        </Modal.Footer>
-      </Modal>
-    </>
-  );
-};
+                </Form.Select>
+              </Form.Group>
+              </Form>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button
+              variant="secondary"
+              onClick={() => setShowCreateFolderModal(false)}
+              >
+              Close
+              </Button>
+              <Button
+              variant="primary"
+              onClick={handleCreateFolder}
+              disabled={creatingFolder}
+              >
+              {creatingFolder ? "Creating..." : "Create Folder"}
+              </Button>
+            </Modal.Footer>
+            </Modal>
 
-export default CourseView;
+              {/* File Preview Modal */}
+              <Modal
+              show={showFileModal}
+              onHide={() => {
+                setShowFileModal(false);
+                setFileLoading(false);
+                setFileError(null);
+                setCurrentFile(null);
+              }}
+              size="lg"
+              centered
+              >
+              <Modal.Header closeButton>
+                <Modal.Title>{currentFile?.fileName}</Modal.Title>
+              </Modal.Header>
+              <Modal.Body>
+                {fileLoading && (
+                <div className="text-center p-4">
+                  <Spinner animation="border" variant="primary" />
+                  <p className="mt-2">Loading file...</p>
+                </div>
+                )}
+                {fileError && (
+                <div className="alert alert-danger">
+                  {fileError}
+                </div>
+                )}
+                {currentFile?.file_type === 'video' ? (
+                <div className="video-container">
+                  {fileLoading && (
+                  <div className="loading-overlay">
+                    <Spinner animation="border" variant="light" />
+                    <p className="mt-2 text-light">Loading video...</p>
+                  </div>
+                  )}
+                    <video
+                    id="videoPlayer"
+                    controls
+                    style={{ width: '100%', height: 'auto' }}
+                    onLoadStart={() => setFileLoading(true)}
+                    onError={(e) => {
+                      console.error('Video error:', e);
+                      setFileError('Error playing video. Please try again.');
+                      setFileLoading(false);
+                    }}
+                    />
+
+                  {fileError && (
+                  <div className="alert alert-danger m-3">
+                    {fileError}
+                  </div>
+                  )}
+                </div>
+                ) : currentFile?.file_type === 'pdf' ? (
+                <div className="pdf-container">
+                  {fileLoading && (
+                  <div className="loading-overlay">
+                    <Spinner animation="border" variant="primary" />
+                    <p className="mt-2">Loading PDF...</p>
+                  </div>
+                  )}
+                  <iframe
+                  src={`${import.meta.env.VITE_BACKEND_URL}/course/pdf/${currentFile._id}?token=${localStorage.getItem('auth_token')}`}
+                  width="100%"
+                  height="600px"
+                  title={currentFile.fileName}
+                  style={{ border: 'none', display: fileLoading ? 'none' : 'block' }}
+                  onLoad={() => setFileLoading(false)}
+                  onError={() => {
+                    setFileError('Error loading PDF. Please try again.');
+                    setFileLoading(false);
+                  }}
+                  />
+                  {fileError && (
+                  <div className="alert alert-danger m-3">
+                    {fileError}
+                  </div>
+                  )}
+                </div>
+                ) : null}
+              </Modal.Body>
+              </Modal>
+            </>
+            );
+          };
+
+          export default CourseView;
+
