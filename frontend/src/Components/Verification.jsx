@@ -128,7 +128,7 @@ const Verification = ({ show, onHide, onSuccess }) => {
         const response = await axios.post(
           `${import.meta.env.VITE_BACKEND_URL}/auth/get-user`,
           {},
-          { headers: { auth_token: `${localStorage.getItem("auth_token")}` } }
+            { headers: { auth_token: localStorage.getItem("auth_token") || null } }
         );
 
         const iuser = response.data;
@@ -178,7 +178,7 @@ const Verification = ({ show, onHide, onSuccess }) => {
       const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/auth/send-verification`,
         { email: form.email, preRegistered: true },
-        { headers: { auth_token: localStorage.getItem("auth_token") } }
+        { headers: { auth_token: localStorage.getItem("auth_token") || null } }
       );
       const successMessages = [
         "Email verified successfully",
@@ -291,7 +291,7 @@ const Verification = ({ show, onHide, onSuccess }) => {
       const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/auth/meta-user`,
         { profession, addressLine, city, state, postalCode, country },
-        { headers: { auth_token: `${localStorage.getItem("auth_token")}` } }
+        { headers: { auth_token: localStorage.getItem("auth_token") || null } }
       );
 
       setMessage({

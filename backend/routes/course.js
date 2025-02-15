@@ -28,7 +28,7 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 const checkCourseAccess = async (userId, courseId) => {
   const user = await User.findById(userId);
   if (user.type === 'admin') return true;
-  
+
   const member = await courseMember.findOne({
     user: userId,
     course: courseId,
@@ -234,8 +234,8 @@ router.post(
     const token = req.header("auth_token");
     if (!token) {
       return res.status(401).json({ error: "Unauthorized Accesss" });
-    } 
-      
+    }
+
     try {
       //verifying token from admin only
       const user_id = jwt.verify(token, JWT_SECRET).id;
@@ -243,7 +243,7 @@ router.post(
       if (!course) {
         return res.status(404).json({ error: "Course not found" });
       }
-      const member = await courseMember.findOne({user:user_id,course:course_id,status:"active"});
+      const member = await courseMember.findOne({ user: user_id, course: course_id, status: "active" });
       if (!member)
         return res.status(401).json({ error: "Unauthorized Accesss" });
       const user = await User.findById(user_id);
@@ -277,7 +277,7 @@ router.post(
       .matches(/^[a-zA-Z0-9_\s]+$/), // Only alphanumeric characters, underscores, and spaces are allowed
     check("parent", "Parent ID must be a valid MongoDB ObjectId").optional().isMongoId(),
     check("course_id", "Course ID is required and must be a valid MongoDB ObjectId").isMongoId(),
-    check("visiblity","Enter a Valid visiblity Parameter").optional()
+    check("visiblity", "Enter a Valid visiblity Parameter").optional()
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -287,10 +287,10 @@ router.post(
 
     try {
       // Extract fields from the request
-      const { name, parent, course_id} = req.body;
+      const { name, parent, course_id } = req.body;
       const token = req.header("auth_token");
-      let {visibility} = req.body;
-      if(visibility && visibility == "private") visibility = "private";
+      let { visibility } = req.body;
+      if (visibility && visibility == "private") visibility = "private";
 
       // Check token validity
       if (!token) {
@@ -337,7 +337,7 @@ router.post(
         user: user_id,
         course: course_id,
         file_type: "dir",
-        visibility:visibility,
+        visibility: visibility,
         parent: parent || null,
         fileName: name,
       });
@@ -386,7 +386,7 @@ router.post(
   async (req, res) => {
     try {
       // Handle file upload
-      upload(req, res, async function(err) {
+      upload(req, res, async function (err) {
         if (err instanceof multer.MulterError) {
           return res.status(400).json({ error: err.message });
         } else if (err) {
@@ -422,52 +422,52 @@ router.post(
         const results = [];
         const processFile = async (file) => {
           let destinationPath = file.path;
-          
-            if (file.mimetype === "video/mp4") {
-              const hlsOutputDir = path.join(
+
+          if (file.mimetype === "video/mp4") {
+            const hlsOutputDir = path.join(
               __dirname,
               "../../uploads",
               "hls",
               file.filename.split(".")[0]
-              );
+            );
 
-              if (!fs.existsSync(hlsOutputDir)) {
+            if (!fs.existsSync(hlsOutputDir)) {
               fs.mkdirSync(hlsOutputDir, { recursive: true });
-              }
+            }
 
-              try {
+            try {
               await new Promise((resolve, reject) => {
                 ffmpeg(file.path)
-                .outputOptions([
-                  '-c:v libx264',         // Video codec
-                  '-crf 23',              // Constant Rate Factor (quality)
-                  '-preset fast',         // Encoding speed preset
-                  '-c:a aac',             // Audio codec
-                  '-ar 48000',            // Audio sample rate
-                  '-b:a 128k',            // Audio bitrate
-                  '-ac 2',                // Audio channels
-                  '-hls_time 4',          // Duration of each segment
-                  '-hls_list_size 0',     // Keep all segments
-                  '-hls_segment_filename', `${hlsOutputDir}/%03d.ts`,  // Segment filename pattern
-                  '-f hls'                // Force HLS format
-                ])
-                .output(`${hlsOutputDir}/playlist.m3u8`)
-                .on('start', (commandLine) => {
-                  console.log('FFmpeg conversion started:', commandLine);
-                })
-                .on('progress', (progress) => {
-                  console.log(`Processing: ${progress.percent ? progress.percent.toFixed(2) : 0}% done`);
-                })
-                .on('end', () => {
-                  console.log("HLS conversion finished successfully");
-                  resolve();
-                })
-                .on('error', (err, stdout, stderr) => {
-                  console.error("FFmpeg error:", err.message);
-                  console.error("FFmpeg stderr:", stderr);
-                  reject(new Error(`FFmpeg conversion failed: ${err.message}`));
-                })
-                .run();
+                  .outputOptions([
+                    '-c:v libx264',         // Video codec
+                    '-crf 23',              // Constant Rate Factor (quality)
+                    '-preset fast',         // Encoding speed preset
+                    '-c:a aac',             // Audio codec
+                    '-ar 48000',            // Audio sample rate
+                    '-b:a 128k',            // Audio bitrate
+                    '-ac 2',                // Audio channels
+                    '-hls_time 4',          // Duration of each segment
+                    '-hls_list_size 0',     // Keep all segments
+                    '-hls_segment_filename', `${hlsOutputDir}/%03d.ts`,  // Segment filename pattern
+                    '-f hls'                // Force HLS format
+                  ])
+                  .output(`${hlsOutputDir}/playlist.m3u8`)
+                  .on('start', (commandLine) => {
+                    console.log('FFmpeg conversion started:', commandLine);
+                  })
+                  .on('progress', (progress) => {
+                    console.log(`Processing: ${progress.percent ? progress.percent.toFixed(2) : 0}% done`);
+                  })
+                  .on('end', () => {
+                    console.log("HLS conversion finished successfully");
+                    resolve();
+                  })
+                  .on('error', (err, stdout, stderr) => {
+                    console.error("FFmpeg error:", err.message);
+                    console.error("FFmpeg stderr:", stderr);
+                    reject(new Error(`FFmpeg conversion failed: ${err.message}`));
+                  })
+                  .run();
               });
 
               destinationPath = path.join(
@@ -478,15 +478,15 @@ router.post(
 
               // Only delete the original file if conversion was successful
               fs.unlinkSync(file.path);
-              } catch (error) {
+            } catch (error) {
               console.error("Error processing video:", error);
               // Clean up the HLS directory if conversion failed
               if (fs.existsSync(hlsOutputDir)) {
                 fs.rmSync(hlsOutputDir, { recursive: true, force: true });
               }
               throw new Error(`Video conversion failed: ${error.message}`);
-              }
             }
+          }
 
 
           const newFile = new courseContent({
@@ -541,21 +541,21 @@ router.post("/check-member", async (req, res) => {
   }
   try {
     const user_id = jwt.verify(token, JWT_SECRET);
-    
+
     const user = await User.findById(user_id.id);
-    if (!user) return res.json({status: false});
-    const {course_id} = req.body;
+    if (!user) return res.json({ status: false });
+    const { course_id } = req.body;
     const course = await Course.findById(course_id);
-    
-    if (!course) return res.json({ status:status });
+
+    if (!course) return res.json({ status: status });
     const member = await courseMember.findOne({ user: user_id.id, course: course_id });
     if (member && member.status === "active") {
       status = true;
     }
-    return res.json({status: status});
+    return res.json({ status: status });
   } catch (error) {
     console.error("Error checking member:", error);
-    return res.json({status: false});
+    return res.json({ status: false });
   }
 }
 );
@@ -571,46 +571,67 @@ router.post(
   ],
   async (req, res) => {
     try {
-      // 1. Validate Inputs
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
-      
 
-      // 3. Check Course and Parent Directory
       const { course_id, parent } = req.body;
-      // console.log(course_id,parent);
       const course = await Course.findById(course_id);
       if (!course) return res.status(404).json({ error: "Course not found" });
+
+      let isAuthorized = false;
+      const token = req.header("auth_token");
+
+      if (token) {
+        try {
+          const user_id = jwt.verify(token, JWT_SECRET);
+          const user = await User.findById(user_id.id);
+          
+          if (user) {
+            if (user.type === 'admin') {
+              isAuthorized = true;
+            } else {
+              const member = await courseMember.findOne({ 
+                user: user_id.id, 
+                course: course_id,
+                status: "active"
+              });
+              isAuthorized = !!member;
+            }
+          }
+        } catch (error) {
+          console.error("Token verification error:", error);
+        }
+      }
 
       if (parent) {
         const parentDir = await courseContent.findById(parent);
         if (!parentDir || parentDir.file_type !== "dir") {
           return res.status(400).json({ error: "Invalid parent directory" });
         }
+        
+        if (parentDir.visibility === "private" && !isAuthorized) {
+          return res.status(403).json({ error: "Premium content. Please purchase the course to access." });
+        }
       }
 
-      // 4. Fetch Course Content
       const directories = await courseContent.find({
         course: course_id,
         parent: parent || null,
         file_type: "dir",
-      }); 
+      });
 
       const files = await courseContent.find({
         course: course_id,
         parent: parent || null,
         file_type: { $ne: "dir" },
-      }); 
+      });
 
-      const courseContentData = {
+      return res.json({
         directories,
         files,
-      };
-      console.log(courseContentData);
-      
-      return res.json(courseContentData);
+      });
     } catch (error) {
       console.error("Error:", error);
       return res.status(500).json({ error: "Internal Server Error" });
@@ -720,17 +741,17 @@ router.get('/pdf/:fileId', async (req, res) => {
 
     const filePath = path.join(__dirname, '../../uploads', file.destination);
     const stat = await fs.stat(filePath);
-    
+
     // Set headers for PDF streaming
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Length', stat.size);
     res.setHeader('Content-Disposition', 'inline; filename="' + file.fileName + '"');
     res.setHeader('Cache-Control', 'no-cache');
-    
+
     // Stream the PDF file
     const fileStream = createReadStream(filePath);
     fileStream.pipe(res);
-    
+
     fileStream.on('error', (error) => {
       console.error('Error streaming PDF:', error);
       if (!res.headersSent) {

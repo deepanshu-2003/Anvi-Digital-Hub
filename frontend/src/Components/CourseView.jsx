@@ -47,7 +47,7 @@ const CourseView = () => {
           },
           {
             headers: {
-              auth_token: localStorage.getItem("auth_token"),
+                auth_token: localStorage.getItem("auth_token") || null,
             },
           }
         );
@@ -87,7 +87,7 @@ const CourseView = () => {
         `${import.meta.env.VITE_BACKEND_URL}/course/get-file/${file._id}`,
         {
           headers: {
-            auth_token: localStorage.getItem("auth_token"),
+            auth_token: localStorage.getItem("auth_token") || null,
           },
           responseType: 'blob'
         }
@@ -197,7 +197,7 @@ const CourseView = () => {
         },
         {
           headers: {
-            auth_token: localStorage.getItem("auth_token"),
+            auth_token: localStorage.getItem("auth_token") || null,
           },
         }
       );
@@ -303,7 +303,7 @@ const CourseView = () => {
         {
           headers: {
             "Content-Type": "application/json",
-            auth_token: localStorage.getItem("auth_token"),
+            auth_token: localStorage.getItem("auth_token") || null,
           },
         }
       );

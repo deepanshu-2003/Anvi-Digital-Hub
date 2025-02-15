@@ -62,10 +62,10 @@ const CourseView = () => {
     if (currentFile?.file_type === 'video') {
       const videoElement = document.getElementById('videoPlayer');
       if (Hls.isSupported() && videoElement) {
-        const token = localStorage.getItem('auth_token');
+        const token = localStorage.getItem("auth_token") || null;
         const hls = new Hls({
           xhrSetup: function(xhr) {
-            xhr.setRequestHeader('auth_token', token);
+          xhr.setRequestHeader('auth_token', token);
           },
           enableWorker: true,
           debug: true
@@ -173,8 +173,13 @@ const CourseView = () => {
         const contentRes = await axios.post(
           `${import.meta.env.VITE_BACKEND_URL}/course/show-content`,
           {
-            course_id: id,
-            ...(parent && { parent: parent }),
+          course_id: id,
+          ...(parent && { parent: parent }),
+          },
+          {
+          headers: {
+            auth_token: localStorage.getItem("auth_token") || null,
+          },
           }
         );
         setContentDir(contentRes.data.directories);
@@ -288,15 +293,15 @@ const CourseView = () => {
     if (parent) formData.append('parent', parent);
 
     try {
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.post(
+        const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/course/upload-file`,
         formData,
         {
           headers: {
-            'Content-Type': 'multipart/form-data',
-            auth_token: token
+          'Content-Type': 'multipart/form-data',
+          auth_token: localStorage.getItem("auth_token") || null
           },
+
           onUploadProgress: (progressEvent) => {
             const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
             const newProgress = {};
@@ -361,13 +366,14 @@ const CourseView = () => {
     if (parent) payload.parent = parent;
 
     try {
-      const token = localStorage.getItem("auth_token");
-        await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/course/make-dir`,
-        payload,
-        {
-          headers: { auth_token: token },
-        }
+      await axios.post(
+      `${import.meta.env.VITE_BACKEND_URL}/course/make-dir`,
+      payload,
+      {
+        headers: { 
+        auth_token: localStorage.getItem("auth_token") || null 
+        },
+      }
         );
 
         setLoadingContent(true);
@@ -885,7 +891,7 @@ const CourseView = () => {
                   </div>
                   )}
                   <iframe
-                  src={`${import.meta.env.VITE_BACKEND_URL}/course/pdf/${currentFile._id}?token=${localStorage.getItem('auth_token')}`}
+                    src={`${import.meta.env.VITE_BACKEND_URL}/course/pdf/${currentFile._id}?token=${localStorage.getItem("auth_token") || null}`}
                   width="100%"
                   height="600px"
                   title={currentFile.fileName}

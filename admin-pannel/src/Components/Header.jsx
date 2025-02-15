@@ -76,12 +76,12 @@ const Header = () => {
   // Validate JWT Token and Fetch User Details
   useEffect(() => {
     const validateToken = async () => {
-      const token = localStorage.getItem("auth_token");
-      if (!token) {
+        const token = localStorage.getItem("auth_token") || null;
+        if (!token) {
         handleLogout();
         navigate("/login");
         return false;
-      }
+        }
 
       try {
         const response = await axios.post(
@@ -102,13 +102,13 @@ const Header = () => {
     };
 
     const fetchUserDetails = async () => {
-      const token = localStorage.getItem("auth_token");
-      if (!token) {
+        const token = localStorage.getItem("auth_token") || null;
+        if (!token) {
         setUser({ name: "Root User", profileImg: null });
         localStorage.setItem("user", "Root User");
         localStorage.setItem("profile_img", null);
         return;
-      }
+        }
 
       try {
         const response = await axios.post(
@@ -139,8 +139,8 @@ const Header = () => {
       const isValidToken = await validateToken();
       if (!isValidToken) return;
 
-      const token = localStorage.getItem("auth_token");
-      setIsLoggedIn(!!token);
+        const token = localStorage.getItem("auth_token") || null;
+        setIsLoggedIn(!!token);
 
       if (!localStorage.getItem("user")) {
         await fetchUserDetails();

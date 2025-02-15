@@ -14,7 +14,7 @@ const CreateCourse = ({onSuccess}) => {
   });
 
   const [imageInputType, setImageInputType] = useState('url');
-  const [authToken] = useState(localStorage.getItem("auth_token"));
+  const [authToken] = useState(localStorage.getItem("auth_token") || null);
   const [message, setMessage] = useState(null);
 
   const handleInputChange = (e) => {
@@ -45,7 +45,7 @@ const CreateCourse = ({onSuccess}) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          auth_token: `${authToken}`,
+            auth_token: authToken,
         },
         body: JSON.stringify(courseData),
       });
