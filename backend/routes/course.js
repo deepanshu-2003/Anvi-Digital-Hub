@@ -424,75 +424,70 @@ router.post(
           let destinationPath = file.path;
           
             if (file.mimetype === "video/mp4") {
-            const hlsOutputDir = path.join(
+              const hlsOutputDir = path.join(
               __dirname,
               "../../uploads",
               "hls",
               file.filename.split(".")[0]
-            );
+              );
 
-            if (!fs.existsSync(hlsOutputDir)) {
+              if (!fs.existsSync(hlsOutputDir)) {
               fs.mkdirSync(hlsOutputDir, { recursive: true });
-            }
+              }
 
-            try {
-                await new Promise((resolve, reject) => {
+              try {
+              await new Promise((resolve, reject) => {
                 ffmpeg(file.path)
                 .outputOptions([
-                "-profile:v baseline",
-                "-level 3.0",
-                "-start_number 0",
-                "-hls_time 10",
-                "-hls_list_size 0",
-                "-f hls",
-                "-hls_segment_filename", `${hlsOutputDir}/%03d.ts`,
-                "-hls_segment_type", "mpegts",
-                "-hls_flags", "independent_segments",
-                "-hls_playlist_type", "vod",
-                "-c:v libx264",
-                "-crf 23",
-                "-preset medium",
-                "-c:a aac",
-                "-ar 48000",
-                "-b:a 128k",
-                "-ac 2",
-                "-maxrate 2000k",
-                "-bufsize 4000k",
-                "-movflags +faststart",
-                "-hls_init_time 4",
-                "-hls_time 4",
-                "-hls_segment_type mpegts",
-                "-hls_segment_length 4",
-                "-master_pl_name master.m3u8",
-                "-var_stream_map", "v:0,a:0"
+                  '-c:v libx264',         // Video codec
+                  '-crf 23',              // Constant Rate Factor (quality)
+                  '-preset fast',         // Encoding speed preset
+                  '-c:a aac',             // Audio codec
+                  '-ar 48000',            // Audio sample rate
+                  '-b:a 128k',            // Audio bitrate
+                  '-ac 2',                // Audio channels
+                  '-hls_time 4',          // Duration of each segment
+                  '-hls_list_size 0',     // Keep all segments
+                  '-hls_segment_filename', `${hlsOutputDir}/%03d.ts`,  // Segment filename pattern
+                  '-f hls'                // Force HLS format
                 ])
                 .output(`${hlsOutputDir}/playlist.m3u8`)
-                .on("progress", (progress) => {
-                console.log(`Processing: ${progress.percent}% done`);
+                .on('start', (commandLine) => {
+                  console.log('FFmpeg conversion started:', commandLine);
                 })
-                .on("end", () => {
-                console.log("HLS conversion finished");
-                resolve();
+                .on('progress', (progress) => {
+                  console.log(`Processing: ${progress.percent ? progress.percent.toFixed(2) : 0}% done`);
                 })
-                .on("error", (err) => {
-                console.error("HLS conversion error:", err);
-                reject(err);
+                .on('end', () => {
+                  console.log("HLS conversion finished successfully");
+                  resolve();
+                })
+                .on('error', (err, stdout, stderr) => {
+                  console.error("FFmpeg error:", err.message);
+                  console.error("FFmpeg stderr:", stderr);
+                  reject(new Error(`FFmpeg conversion failed: ${err.message}`));
                 })
                 .run();
               });
 
               destinationPath = path.join(
-              "hls",
-              file.filename.split(".")[0],
-              "playlist.m3u8"
+                "hls",
+                file.filename.split(".")[0],
+                "playlist.m3u8"
               );
 
+              // Only delete the original file if conversion was successful
               fs.unlinkSync(file.path);
-            } catch (error) {
+              } catch (error) {
               console.error("Error processing video:", error);
-              throw error;
+              // Clean up the HLS directory if conversion failed
+              if (fs.existsSync(hlsOutputDir)) {
+                fs.rmSync(hlsOutputDir, { recursive: true, force: true });
+              }
+              throw new Error(`Video conversion failed: ${error.message}`);
+              }
             }
-            }
+
 
           const newFile = new courseContent({
             user: user_id,
