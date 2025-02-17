@@ -722,7 +722,10 @@ router.get('/pdf/:fileId', async (req, res) => {
     const token = req.query.token || req.header("auth_token");
     if (!token) return res.status(401).json({ error: "Unauthorized" });
 
-    const user_id = jwt.verify(token, JWT_SECRET).id;
+    // Verify the token
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user_id = decoded.id;
+    
     const file = await courseContent.findById(req.params.fileId);
     if (!file) return res.status(404).json({ error: "File not found" });
 
@@ -740,16 +743,18 @@ router.get('/pdf/:fileId', async (req, res) => {
     }
 
     const filePath = path.join(__dirname, '../../uploads', file.destination);
-    const stat = await fs.stat(filePath);
+    
+    // Fixed: Use promises version of fs.stat
+    const stat = await fs.promises.stat(filePath);
 
     // Set headers for PDF streaming
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Length', stat.size);
-    res.setHeader('Content-Disposition', 'inline; filename="' + file.fileName + '"');
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(file.fileName)}"`);
     res.setHeader('Cache-Control', 'no-cache');
 
     // Stream the PDF file
-    const fileStream = createReadStream(filePath);
+    const fileStream = fs.createReadStream(filePath);
     fileStream.pipe(res);
 
     fileStream.on('error', (error) => {
@@ -758,12 +763,15 @@ router.get('/pdf/:fileId', async (req, res) => {
         res.status(500).json({ error: "Error streaming PDF" });
       }
     });
+
   } catch (error) {
     console.error('Error serving PDF:', error);
     if (!res.headersSent) {
-      res.status(500).json({ error: "Error serving PDF" });
+      res.status(500).json({ 
+        error: "Error serving PDF",
+        details: error.message
+      });
     }
   }
 });
-
 module.exports = router;
