@@ -714,10 +714,6 @@ router.post(
         already_present.verified = false;
         createdAt = new Date();
         await already_present.save();
-        setTimeout(async () => {
-          return res.json({ msg: `OTP is ${OTP}` });
-        }, 3000);
-        return;
       }
       const mobileVerify = new MobileVerify({
         mobile: req.body.mobile,

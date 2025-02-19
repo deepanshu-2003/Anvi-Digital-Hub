@@ -120,6 +120,7 @@ const Verification = ({ show, onHide, onSuccess }) => {
   });
   const [message, setMessage] = useState(null);
   const [emailResendTimer, setEmailResendTimer] = useState(0);
+  const [mobileResendTimer, setMobileResendTimer] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -162,6 +163,14 @@ const Verification = ({ show, onHide, onSuccess }) => {
     return () => clearTimeout(timer);
   }, [emailResendTimer]);
 
+  useEffect(() => {
+    let timer;
+    if (mobileResendTimer > 0) {
+      timer = setTimeout(() => setMobileResendTimer(mobileResendTimer - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [mobileResendTimer]);
+
   const autoHideMessage = () => {
     setTimeout(() => setMessage(null), 3000);
   };
@@ -197,7 +206,7 @@ const Verification = ({ show, onHide, onSuccess }) => {
       setMessage({
         type: "danger",
         text:
-          error.response?.data?.message || "Error sending verification email.",
+          error.response?.data?.errors?.[0]?.msg || "Error sending verification email.",
       });
     } finally {
       setLoading((prev) => ({ ...prev, email: false }));
@@ -213,14 +222,14 @@ const Verification = ({ show, onHide, onSuccess }) => {
       set_mobile_verification_clicked(true);
     }
     setLoading((prev) => ({ ...prev, mobile: true }));
-
+    
     try {
       const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/auth/verify-mobile`,
         { preRegistered: true, mobile: form.mobile },
         { headers: { auth_token: localStorage.getItem("auth_token") } }
       );
-
+      
       if (response.data && response.data.msg) {
         setMessage({ type: "success", text: response.data.msg });
         setShowOtpInput(true); // Show OTP input field
@@ -231,6 +240,7 @@ const Verification = ({ show, onHide, onSuccess }) => {
         });
       }
       set_mobile_verification_clicked(false);
+      setMobileResendTimer(30);
     } catch (error) {
       const errorMessage =
         error.response?.data?.errors?.[0]?.msg ||
@@ -374,10 +384,15 @@ const Verification = ({ show, onHide, onSuccess }) => {
           <div className="d-flex flex-column gap-2 mt-2">
             <Button
               onClick={handleMobileVerification}
-              disabled={loading.mobile}
+              disabled={loading.mobile || mobileResendTimer > 0}
             >
-              {loading.mobile ? (
+              {loading.mobile? (
                 <Spinner animation="border" size="sm" />
+              ) : mobileResendTimer > 0 ? (
+              <div>
+                <Spinner animation="border" size="sm" />
+                Resend OTP in {mobileResendTimer}s
+              </div>
               ) : (
                 "Verify Mobile"
               )}
