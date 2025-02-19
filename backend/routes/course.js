@@ -600,8 +600,6 @@ router.post(
           console.error("Token verification error:", error);
         }
       }
-      console.log(hasAccess);
-
       if (parent) {
         const parentDir = await courseContent.findById(parent);
         if (!parentDir || parentDir.file_type !== "dir") {
