@@ -9,10 +9,12 @@ import { MessageContext } from "../Context/MessageContext";
 import Verification from "./Verification";
 import "bootstrap/dist/css/bootstrap.min.css";
 import Hls from "hls.js";
-import { Document, Page } from "react-pdf";
-import "../utils/pdfjs-config";
+import { Document, Page, pdfjs } from 'react-pdf';
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
+
+// Configure PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js`;
 
 const CourseView = () => {
   const { id } = useParams();
@@ -47,6 +49,18 @@ const CourseView = () => {
   const hlsRef = useRef(null);
 
   const navigate = useNavigate();
+
+  // Initialize PDF.js
+  useEffect(() => {
+    const initializePdfJs = async () => {
+      try {
+        await import('pdfjs-dist/build/pdf.worker.entry');
+      } catch (error) {
+        console.error('Error initializing PDF.js worker:', error);
+      }
+    };
+    initializePdfJs();
+  }, []);
 
   useEffect(() => {
     console.log("Fetching content for course ID:", id);
@@ -124,6 +138,7 @@ const CourseView = () => {
     } catch (error) {
       console.error("Error accessing file:", error);
       setMessage({ type: "error", text: "Error accessing file. Please try again." });
+      setFileLoading(false);
     }
   };
 
@@ -389,151 +404,124 @@ const CourseView = () => {
     changePage(1);
   };
 
-  // Add renderFileContent function
-  const renderFileContent = () => {
+  // Update the PDF rendering part
+  const renderPdfViewer = () => {
     if (!currentFile) return null;
 
-    if (fileLoading) {
-      return (
-        <div className="text-center p-5">
-          <Spinner animation="border" role="status">
-            <span className="visually-hidden">Loading {currentFile.file_type === 'pdf' ? 'PDF' : 'video'}...</span>
-          </Spinner>
-        </div>
-      );
-    }
-
-    if (fileError) {
-      return (
-        <div className="text-center text-danger p-5">
-          <p>{fileError}</p>
-          <Button 
-            variant="outline-primary" 
-            onClick={() => {
-              setFileError(null);
-              setFileLoading(true);
-              handleFilePlay(currentFile);
-            }}
-          >
-            Try Again
-          </Button>
-        </div>
-      );
-    }
-
-    if (currentFile.file_type === 'pdf') {
-      return (
-        <div className="pdf-container">
-          {fileLoading && (
-            <div className="loading-overlay">
-              <Spinner animation="border" variant="primary" />
-              <p className="mt-2">Loading PDF...</p>
+    return (
+      <div className="pdf-container">
+        {fileLoading && (
+          <div className="loading-overlay">
+            <Spinner animation="border" variant="primary" />
+            <p className="mt-2">Loading PDF...</p>
+          </div>
+        )}
+        <Document
+          file={{
+            url: `${import.meta.env.VITE_BACKEND_URL}/course/pdf/${currentFile._id}`,
+            httpHeaders: {
+              'auth_token': localStorage.getItem("auth_token"),
+            },
+            withCredentials: false
+          }}
+          onLoadSuccess={({ numPages: nextNumPages }) => {
+            console.log('PDF loaded successfully, pages:', nextNumPages);
+            setNumPages(nextNumPages);
+            setFileLoading(false);
+          }}
+          onLoadError={(error) => {
+            console.error("Error loading PDF:", error);
+            setFileError("Error loading PDF. Please check your internet connection and try again.");
+            setFileLoading(false);
+          }}
+          loading={
+            <div className="text-center p-5">
+              <Spinner animation="border" role="status">
+                <span className="visually-hidden">Loading PDF...</span>
+              </Spinner>
             </div>
-          )}
-          <Document
-            file={{
-              url: `${import.meta.env.VITE_BACKEND_URL}/course/pdf/${currentFile._id}`,
-              httpHeaders: {
-                auth_token: localStorage.getItem("auth_token"),
-              },
-            }}
-            onLoadSuccess={onDocumentLoadSuccess}
-            onLoadError={(error) => {
-              console.error("Error loading PDF:", error);
-              setFileError("Error loading PDF. Please try again.");
-              setFileLoading(false);
-            }}
-            loading={
-              <div className="text-center p-5">
-                <Spinner animation="border" role="status">
-                  <span className="visually-hidden">Loading PDF...</span>
-                </Spinner>
-              </div>
-            }
-          >
-            <Page
-              pageNumber={pageNumber}
-              width={Math.min(window.innerWidth * 0.8, 800)}
-              renderTextLayer={true}
-              renderAnnotationLayer={true}
-              onLoadSuccess={() => setFileLoading(false)}
-              onRenderError={(error) => {
-                console.error("Error rendering page:", error);
-                setFileError("Error rendering PDF page. Please try again.");
-                setFileLoading(false);
-              }}
-            />
-          </Document>
-          {numPages && (
-            <div className="text-center mt-3 pdf-controls">
+          }
+          error={
+            <div className="text-center text-danger p-5">
+              <p>Error loading PDF. Please try again.</p>
               <Button 
-                onClick={previousPage} 
-                disabled={pageNumber <= 1}
-                variant="outline-primary"
-                className="me-2"
-              >
-                Previous
-              </Button>
-              <span className="mx-3">
-                Page {pageNumber} of {numPages}
-              </span>
-              <Button 
-                onClick={nextPage} 
-                disabled={pageNumber >= numPages}
-                variant="outline-primary"
-                className="ms-2"
-              >
-                Next
-              </Button>
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    if (currentFile.file_type === 'video') {
-      return (
-        <div className="video-container">
-          {fileLoading && (
-            <div className="loading-overlay">
-              <Spinner animation="border" variant="light" />
-              <p className="mt-2 text-light">Loading video...</p>
-            </div>
-          )}
-          <video
-            ref={videoRef}
-            controls
-            playsInline
-            style={{ width: "100%", height: "auto", maxHeight: "80vh" }}
-            onLoadStart={() => setFileLoading(true)}
-            onError={(e) => {
-              console.error("Video error:", e.target.error);
-              setFileError("Error playing video. Please try again.");
-              setFileLoading(false);
-            }}
-          />
-          {fileError && (
-            <div className="alert alert-danger m-3">
-              {fileError}
-              <Button 
-                variant="outline-danger" 
-                size="sm" 
-                className="ms-3"
+                variant="outline-primary" 
                 onClick={() => {
                   setFileError(null);
                   setFileLoading(true);
                   handleFilePlay(currentFile);
                 }}
               >
-                Try Again
+                Retry
               </Button>
             </div>
+          }
+          options={{
+            cMapUrl: 'https://unpkg.com/pdfjs-dist@3.4.120/cmaps/',
+            cMapPacked: true,
+            standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@3.4.120/standard_fonts/',
+            disableAutoFetch: false,
+            disableStream: false,
+            enableXfa: true,
+            useSystemFonts: true,
+            isEvalSupported: false,
+            useWorkerFetch: true
+          }}
+        >
+          {numPages > 0 && (
+            <>
+              <Page
+                key={`page_${pageNumber}`}
+                pageNumber={pageNumber}
+                width={Math.min(window.innerWidth * 0.8, 800)}
+                renderTextLayer={true}
+                renderAnnotationLayer={true}
+                onLoadSuccess={() => {
+                  console.log('Page loaded successfully');
+                  setFileLoading(false);
+                }}
+                onRenderError={(error) => {
+                  console.error("Error rendering page:", error);
+                  setFileError("Error rendering PDF page. Please try again.");
+                  setFileLoading(false);
+                }}
+                loading={
+                  <div className="text-center p-3">
+                    <Spinner animation="border" size="sm" />
+                  </div>
+                }
+                error={
+                  <div className="text-center text-danger">
+                    <p>Failed to render page. Retrying...</p>
+                  </div>
+                }
+              />
+              <div className="text-center mt-3 pdf-controls">
+                <Button 
+                  onClick={previousPage} 
+                  disabled={pageNumber <= 1}
+                  variant="outline-primary"
+                  className="me-2"
+                >
+                  Previous
+                </Button>
+                <span className="mx-3">
+                  Page {pageNumber} of {numPages}
+                </span>
+                <Button 
+                  onClick={nextPage} 
+                  disabled={pageNumber >= numPages}
+                  variant="outline-primary"
+                  className="ms-2"
+                >
+                  Next
+                </Button>
+              </div>
+            </>
           )}
-        </div>
-      );
-    }
-
-    return null;
+        </Document>
+      </div>
+    );
   };
 
   // Add this to handle file downloads if needed
@@ -885,73 +873,7 @@ const CourseView = () => {
               <Modal.Title>{currentFile?.fileName}</Modal.Title>
             </Modal.Header>
             <Modal.Body>
-              {currentFile?.file_type === 'pdf' && (
-                <div className="pdf-container">
-                  {fileLoading && (
-                    <div className="loading-overlay">
-                      <Spinner animation="border" variant="primary" />
-                      <p className="mt-2">Loading PDF...</p>
-                    </div>
-                  )}
-                  <Document
-                    file={{
-                      url: `${import.meta.env.VITE_BACKEND_URL}/course/pdf/${currentFile._id}`,
-                      httpHeaders: {
-                        auth_token: localStorage.getItem("auth_token"),
-                      },
-                    }}
-                    onLoadSuccess={onDocumentLoadSuccess}
-                    onLoadError={(error) => {
-                      console.error("Error loading PDF:", error);
-                      setFileError("Error loading PDF. Please try again.");
-                      setFileLoading(false);
-                    }}
-                    loading={
-                      <div className="text-center p-5">
-                        <Spinner animation="border" role="status">
-                          <span className="visually-hidden">Loading PDF...</span>
-                        </Spinner>
-                      </div>
-                    }
-                  >
-                    <Page
-                      pageNumber={pageNumber}
-                      width={Math.min(window.innerWidth * 0.8, 800)}
-                      renderTextLayer={true}
-                      renderAnnotationLayer={true}
-                      onLoadSuccess={() => setFileLoading(false)}
-                      onRenderError={(error) => {
-                        console.error("Error rendering page:", error);
-                        setFileError("Error rendering PDF page. Please try again.");
-                        setFileLoading(false);
-                      }}
-                    />
-                  </Document>
-                  {numPages && (
-                    <div className="text-center mt-3 pdf-controls">
-                      <Button 
-                        onClick={previousPage} 
-                        disabled={pageNumber <= 1}
-                        variant="outline-primary"
-                        className="me-2"
-                      >
-                        Previous
-                      </Button>
-                      <span className="mx-3">
-                        Page {pageNumber} of {numPages}
-                      </span>
-                      <Button 
-                        onClick={nextPage} 
-                        disabled={pageNumber >= numPages}
-                        variant="outline-primary"
-                        className="ms-2"
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
+              {currentFile?.file_type === 'pdf' && renderPdfViewer()}
               {currentFile?.file_type === 'video' && (
                 <div className="video-container">
                   {fileLoading && (
