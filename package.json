@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "hls.js": "^1.5.20",
+    "pdfjs-dist": "^4.10.38",
+    "react-pdf": "^9.2.1"
+  }
+}

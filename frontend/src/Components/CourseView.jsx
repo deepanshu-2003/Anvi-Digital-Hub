@@ -1,14 +1,18 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useRef } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { FaArrowLeft, FaBook, FaFolder, FaLock, FaClock, FaUser, FaTag, FaStar, FaFileVideo, FaFilePdf, FaFolderOpen } from 'react-icons/fa';
 import axios from "axios";
-import { Spinner } from "react-bootstrap";
+import { Spinner, Modal, Button } from "react-bootstrap";
 import Header from "./Header";
 import "./CourseView.css";
 import { MessageContext } from "../Context/MessageContext";
 import Verification from "./Verification";
 import "bootstrap/dist/css/bootstrap.min.css";
-
+import Hls from "hls.js";
+import { Document, Page } from "react-pdf";
+import "../utils/pdfjs-config";
+import "react-pdf/dist/esm/Page/AnnotationLayer.css";
+import "react-pdf/dist/esm/Page/TextLayer.css";
 
 const CourseView = () => {
   const { id } = useParams();
@@ -32,10 +36,20 @@ const CourseView = () => {
     rating: 5,
     review: ''
   });
+  const [showFileModal, setShowFileModal] = useState(false);
+  const [currentFile, setCurrentFile] = useState(null);
+  const [fileLoading, setFileLoading] = useState(false);
+  const [fileError, setFileError] = useState(null);
+  const [numPages, setNumPages] = useState(null);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [videoPlayer, setVideoPlayer] = useState(null);
+  const videoRef = useRef(null);
+  const hlsRef = useRef(null);
 
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log("Fetching content for course ID:", id);
     const fetchContent = async () => {
       setLoadingContent(true);
       try {
@@ -51,6 +65,7 @@ const CourseView = () => {
             },
           }
         );
+        console.log("Content fetched:", contentRes.data);
         setContentDir(contentRes.data.directories);
         setContentFiles(contentRes.data.files);
       } catch (error) {
@@ -64,6 +79,13 @@ const CourseView = () => {
     fetchContent();
   }, [id, parent]);
 
+  useEffect(() => {
+    return () => {
+      if (videoPlayer) {
+        videoPlayer.destroy();
+      }
+    };
+  }, [videoPlayer]);
 
   // Add navigation handlers
   const handleNavigate = (newParent) => {
@@ -80,64 +102,136 @@ const CourseView = () => {
     }
   };
 
-  // Add file handling
+  // Update handleFilePlay function
   const handleFilePlay = async (file) => {
+    console.log("Opening file:", file);
     try {
-      const response = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/course/get-file/${file._id}`,
-        {
-          headers: {
-            auth_token: localStorage.getItem("auth_token") || null,
-          },
-          responseType: 'blob'
-        }
-      );
+      // Clean up previous video instance if exists
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
       
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
+      setCurrentFile(file);
+      setFileLoading(true);
+      setFileError(null);
+      setShowFileModal(true);
       
-      if (file.file_type === 'video') {
-        const video = document.createElement('video');
-        video.src = url;
-        video.controls = true;
-        video.style.width = '100%';
-        video.style.maxHeight = '80vh';
-        
-        const modal = document.createElement('div');
-        modal.style.position = 'fixed';
-        modal.style.top = '0';
-        modal.style.left = '0';
-        modal.style.width = '100%';
-        modal.style.height = '100%';
-        modal.style.backgroundColor = 'rgba(0,0,0,0.8)';
-        modal.style.display = 'flex';
-        modal.style.justifyContent = 'center';
-        modal.style.alignItems = 'center';
-        modal.style.zIndex = '1000';
-        
-        modal.appendChild(video);
-        document.body.appendChild(modal);
-        
-        modal.onclick = () => {
-          document.body.removeChild(modal);
-          window.URL.revokeObjectURL(url);
-        };
-      } else {
-        link.download = file.fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+      if (file.file_type === 'pdf') {
+        setPageNumber(1);
+        setNumPages(null);
       }
     } catch (error) {
-      console.error("Error playing/downloading file:", error);
-      setMessage({ type: "error", text: "Error accessing file." });
+      console.error("Error accessing file:", error);
+      setMessage({ type: "error", text: "Error accessing file. Please try again." });
     }
   };
 
+  // Separate useEffect for video cleanup
+  useEffect(() => {
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, []);
+
+  // Update video handling useEffect
+  useEffect(() => {
+    if (currentFile?.file_type === 'video' && showFileModal) {
+      const initializeVideo = async () => {
+        try {
+          const videoElement = videoRef.current;
+          if (!videoElement) {
+            console.error("Video element not found");
+            return;
+          }
+
+          if (Hls.isSupported()) {
+            console.log("HLS is supported");
+            const token = localStorage.getItem("auth_token") || null;
+            const hls = new Hls({
+              xhrSetup: function (xhr) {
+                xhr.setRequestHeader("auth_token", token);
+              },
+              enableWorker: true,
+              debug: true,
+            });
+            hlsRef.current = hls;
+
+            const videoUrl = `${import.meta.env.VITE_BACKEND_URL}/course/stream/${currentFile._id}`;
+            console.log("Loading video URL:", videoUrl);
+
+            hls.loadSource(videoUrl);
+            hls.attachMedia(videoElement);
+
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+              console.log("HLS Manifest parsed successfully");
+              videoElement.play()
+                .then(() => {
+                  console.log("Video playback started");
+                  setFileLoading(false);
+                })
+                .catch((error) => {
+                  console.error("Error playing video:", error);
+                  setFileError("Error starting video playback");
+                });
+            });
+
+            hls.on(Hls.Events.ERROR, (event, data) => {
+              console.error("HLS error event:", event);
+              console.error("HLS error data:", data);
+              if (data.fatal) {
+                switch (data.type) {
+                  case Hls.ErrorTypes.NETWORK_ERROR:
+                    console.log("Fatal network error encountered, trying to recover");
+                    hls.startLoad();
+                    break;
+                  case Hls.ErrorTypes.MEDIA_ERROR:
+                    console.log("Fatal media error encountered, trying to recover");
+                    hls.recoverMediaError();
+                    break;
+                  default:
+                    console.error("Fatal error, cannot recover");
+                    setFileError("An error occurred while playing the video. Please try again.");
+                    hls.destroy();
+                    break;
+                }
+              }
+            });
+          } else if (videoElement.canPlayType("application/vnd.apple.mpegurl")) {
+            console.log("Using native HLS playback");
+            const token = localStorage.getItem("auth_token");
+            videoElement.src = `${import.meta.env.VITE_BACKEND_URL}/course/stream/${currentFile._id}?token=${token}`;
+            
+            videoElement.addEventListener("loadedmetadata", () => {
+              console.log("Video metadata loaded");
+              setFileLoading(false);
+              videoElement.play().catch((error) => {
+                console.error("Error playing video:", error);
+                setFileError("Error playing video");
+              });
+            });
+          } else {
+            console.error("HLS is not supported");
+            setFileError("Your browser does not support HLS video playback.");
+            setFileLoading(false);
+          }
+        } catch (error) {
+          console.error("Error initializing video:", error);
+          setFileError("Error initializing video player. Please try again.");
+          setFileLoading(false);
+        }
+      };
+
+      initializeVideo();
+    }
+  }, [currentFile, showFileModal]);
+
   // Fetch course and reviews
   useEffect(() => {
+    console.log("Fetching course and reviews for ID:", id);
     const fetchCourse = async () => {
       setLoading(true);
       try {
@@ -155,6 +249,9 @@ const CourseView = () => {
         const courseData = await courseResponse.json();
         const reviewsData = await reviewsResponse.json();
 
+        console.log("Course data:", courseData);
+        console.log("Reviews data:", reviewsData);
+
         const memberResponse = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/course/check-member`,
           {
@@ -169,7 +266,7 @@ const CourseView = () => {
         if (memberResponse.ok) {
           const memberData = await memberResponse.json();
           setMember(memberData.status);
-          console.log("Member:", memberData.status);
+          console.log("Member status:", memberData.status);
         }
 
         setCourse(courseData);
@@ -274,6 +371,197 @@ const CourseView = () => {
     ));
   };
 
+  // PDF functions
+  const onDocumentLoadSuccess = ({ numPages }) => {
+    setNumPages(numPages);
+    setFileLoading(false);
+  };
+
+  const changePage = (offset) => {
+    setPageNumber((prevPageNumber) => prevPageNumber + offset);
+  };
+
+  const previousPage = () => {
+    changePage(-1);
+  };
+
+  const nextPage = () => {
+    changePage(1);
+  };
+
+  // Add renderFileContent function
+  const renderFileContent = () => {
+    if (!currentFile) return null;
+
+    if (fileLoading) {
+      return (
+        <div className="text-center p-5">
+          <Spinner animation="border" role="status">
+            <span className="visually-hidden">Loading {currentFile.file_type === 'pdf' ? 'PDF' : 'video'}...</span>
+          </Spinner>
+        </div>
+      );
+    }
+
+    if (fileError) {
+      return (
+        <div className="text-center text-danger p-5">
+          <p>{fileError}</p>
+          <Button 
+            variant="outline-primary" 
+            onClick={() => {
+              setFileError(null);
+              setFileLoading(true);
+              handleFilePlay(currentFile);
+            }}
+          >
+            Try Again
+          </Button>
+        </div>
+      );
+    }
+
+    if (currentFile.file_type === 'pdf') {
+      return (
+        <div className="pdf-container">
+          {fileLoading && (
+            <div className="loading-overlay">
+              <Spinner animation="border" variant="primary" />
+              <p className="mt-2">Loading PDF...</p>
+            </div>
+          )}
+          <Document
+            file={{
+              url: `${import.meta.env.VITE_BACKEND_URL}/course/pdf/${currentFile._id}`,
+              httpHeaders: {
+                auth_token: localStorage.getItem("auth_token"),
+              },
+            }}
+            onLoadSuccess={onDocumentLoadSuccess}
+            onLoadError={(error) => {
+              console.error("Error loading PDF:", error);
+              setFileError("Error loading PDF. Please try again.");
+              setFileLoading(false);
+            }}
+            loading={
+              <div className="text-center p-5">
+                <Spinner animation="border" role="status">
+                  <span className="visually-hidden">Loading PDF...</span>
+                </Spinner>
+              </div>
+            }
+          >
+            <Page
+              pageNumber={pageNumber}
+              width={Math.min(window.innerWidth * 0.8, 800)}
+              renderTextLayer={true}
+              renderAnnotationLayer={true}
+              onLoadSuccess={() => setFileLoading(false)}
+              onRenderError={(error) => {
+                console.error("Error rendering page:", error);
+                setFileError("Error rendering PDF page. Please try again.");
+                setFileLoading(false);
+              }}
+            />
+          </Document>
+          {numPages && (
+            <div className="text-center mt-3 pdf-controls">
+              <Button 
+                onClick={previousPage} 
+                disabled={pageNumber <= 1}
+                variant="outline-primary"
+                className="me-2"
+              >
+                Previous
+              </Button>
+              <span className="mx-3">
+                Page {pageNumber} of {numPages}
+              </span>
+              <Button 
+                onClick={nextPage} 
+                disabled={pageNumber >= numPages}
+                variant="outline-primary"
+                className="ms-2"
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (currentFile.file_type === 'video') {
+      return (
+        <div className="video-container">
+          {fileLoading && (
+            <div className="loading-overlay">
+              <Spinner animation="border" variant="light" />
+              <p className="mt-2 text-light">Loading video...</p>
+            </div>
+          )}
+          <video
+            ref={videoRef}
+            controls
+            playsInline
+            style={{ width: "100%", height: "auto", maxHeight: "80vh" }}
+            onLoadStart={() => setFileLoading(true)}
+            onError={(e) => {
+              console.error("Video error:", e.target.error);
+              setFileError("Error playing video. Please try again.");
+              setFileLoading(false);
+            }}
+          />
+          {fileError && (
+            <div className="alert alert-danger m-3">
+              {fileError}
+              <Button 
+                variant="outline-danger" 
+                size="sm" 
+                className="ms-3"
+                onClick={() => {
+                  setFileError(null);
+                  setFileLoading(true);
+                  handleFilePlay(currentFile);
+                }}
+              >
+                Try Again
+              </Button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  // Add this to handle file downloads if needed
+  const downloadFile = async (file) => {
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/course/get-file/${file._id}`,
+        {
+          headers: {
+            'auth_token': localStorage.getItem("auth_token")
+          },
+          responseType: 'blob'
+        }
+      );
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', file.fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      setMessage({ type: "error", text: "Error downloading file. Please try again." });
+    }
+  };
 
   if (error) {
     return <div className="alert alert-danger">{error}</div>;
@@ -573,6 +861,153 @@ const CourseView = () => {
               }}
             />
           )}
+
+          <Modal
+            show={showFileModal}
+            onHide={() => {
+              if (hlsRef.current) {
+                hlsRef.current.destroy();
+                hlsRef.current = null;
+              }
+              setShowFileModal(false);
+              setCurrentFile(null);
+              setFileLoading(false);
+              setFileError(null);
+              setNumPages(null);
+              setPageNumber(1);
+            }}
+            size="lg"
+            centered
+            className="file-viewer-modal"
+            backdrop="static"
+          >
+            <Modal.Header closeButton>
+              <Modal.Title>{currentFile?.fileName}</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              {currentFile?.file_type === 'pdf' && (
+                <div className="pdf-container">
+                  {fileLoading && (
+                    <div className="loading-overlay">
+                      <Spinner animation="border" variant="primary" />
+                      <p className="mt-2">Loading PDF...</p>
+                    </div>
+                  )}
+                  <Document
+                    file={{
+                      url: `${import.meta.env.VITE_BACKEND_URL}/course/pdf/${currentFile._id}`,
+                      httpHeaders: {
+                        auth_token: localStorage.getItem("auth_token"),
+                      },
+                    }}
+                    onLoadSuccess={onDocumentLoadSuccess}
+                    onLoadError={(error) => {
+                      console.error("Error loading PDF:", error);
+                      setFileError("Error loading PDF. Please try again.");
+                      setFileLoading(false);
+                    }}
+                    loading={
+                      <div className="text-center p-5">
+                        <Spinner animation="border" role="status">
+                          <span className="visually-hidden">Loading PDF...</span>
+                        </Spinner>
+                      </div>
+                    }
+                  >
+                    <Page
+                      pageNumber={pageNumber}
+                      width={Math.min(window.innerWidth * 0.8, 800)}
+                      renderTextLayer={true}
+                      renderAnnotationLayer={true}
+                      onLoadSuccess={() => setFileLoading(false)}
+                      onRenderError={(error) => {
+                        console.error("Error rendering page:", error);
+                        setFileError("Error rendering PDF page. Please try again.");
+                        setFileLoading(false);
+                      }}
+                    />
+                  </Document>
+                  {numPages && (
+                    <div className="text-center mt-3 pdf-controls">
+                      <Button 
+                        onClick={previousPage} 
+                        disabled={pageNumber <= 1}
+                        variant="outline-primary"
+                        className="me-2"
+                      >
+                        Previous
+                      </Button>
+                      <span className="mx-3">
+                        Page {pageNumber} of {numPages}
+                      </span>
+                      <Button 
+                        onClick={nextPage} 
+                        disabled={pageNumber >= numPages}
+                        variant="outline-primary"
+                        className="ms-2"
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+              {currentFile?.file_type === 'video' && (
+                <div className="video-container">
+                  {fileLoading && (
+                    <div className="loading-overlay">
+                      <Spinner animation="border" variant="light" />
+                      <p className="mt-2 text-light">Loading video...</p>
+                    </div>
+                  )}
+                  <video
+                    ref={videoRef}
+                    controls
+                    playsInline
+                    style={{ width: "100%", height: "auto", maxHeight: "80vh" }}
+                    onLoadStart={() => setFileLoading(true)}
+                    onError={(e) => {
+                      console.error("Video error:", e.target.error);
+                      setFileError("Error playing video. Please try again.");
+                      setFileLoading(false);
+                    }}
+                  />
+                  {fileError && (
+                    <div className="alert alert-danger m-3">
+                      {fileError}
+                      <Button 
+                        variant="outline-danger" 
+                        size="sm" 
+                        className="ms-3"
+                        onClick={() => {
+                          setFileError(null);
+                          setFileLoading(true);
+                          handleFilePlay(currentFile);
+                        }}
+                      >
+                        Try Again
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+              {fileError && !currentFile?.file_type && (
+                <div className="text-center text-danger p-5">
+                  <p>{fileError}</p>
+                  <Button 
+                    variant="outline-primary" 
+                    onClick={() => {
+                      setFileError(null);
+                      setFileLoading(true);
+                      handleFilePlay(currentFile);
+                    }}
+                  >
+                    Try Again
+                  </Button>
+                </div>
+              )}
+            </Modal.Body>
+          </Modal>
         </>
       )}
     </div>
