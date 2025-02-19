@@ -704,11 +704,11 @@ router.post(
       if (already_present && already_present.verified) {
         return res.json({ msg: "Mobile number already verified" });
       }
-      // await twilio_client.messages.create({
-      //   body: `Your OTP for Anvi Digital Hub is ${OTP}. Please use this code to verify your mobile number. Do not share this code with anyone. It is valid for 10 minutes.`,
-      //   from: "+16203776217",
-      //   to:  `${mobile}`,
-      // });
+      await twilio_client.messages.create({
+        body: `Your OTP for Anvi Digital Hub is ${OTP}. Please use this code to verify your mobile number. Do not share this code with anyone. It is valid for 10 minutes.`,
+        from: "+16203776217",
+        to:  `${mobile}`,
+      });
       if (already_present) {
         already_present.OTP = OTP;
         already_present.verified = false;
@@ -724,7 +724,7 @@ router.post(
         OTP,
       });
       await mobileVerify.save();
-      return res.json({ msg: `OTP is ${OTP}` });
+      return res.json({ msg: `OTP sent Successfully` });
     } catch (err) {
       console.log("Error sending message", err);
       return res.status(404).json({ error: "Unable to send OTP." });
@@ -748,6 +748,7 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
     }
     const { mobile, OTP } = req.body;
+    const token = req.header("auth_token") || null;
     try {
       const mobileVerify = await MobileVerify.findOne({ mobile });
       if (!mobileVerify) {
@@ -756,11 +757,13 @@ router.post(
       if (mobileVerify.OTP !== OTP && !mobileVerify.verified) {
         return res.status(400).json({ errors: [{ msg: "Invalid OTP" }] });
       }
-
+      
       mobileVerify.verified = true;
       await mobileVerify.save();
-      const user = await User.findOne({ mobile });
-      if (user) {
+      if(token && token !== "null"){
+        const user_id = jwt.verify(token, JWT_SECRET).id;
+        const user = await User.findById(user_id);
+        user.mobile = mobile;
         user.mobile_verified = true;
         await user.save();
       }
