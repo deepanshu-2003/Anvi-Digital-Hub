@@ -524,32 +524,7 @@ const CourseView = () => {
     );
   };
 
-  // Add this to handle file downloads if needed
-  const downloadFile = async (file) => {
-    try {
-      const response = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/course/get-file/${file._id}`,
-        {
-          headers: {
-            'auth_token': localStorage.getItem("auth_token")
-          },
-          responseType: 'blob'
-        }
-      );
-      
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', file.fileName);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Error downloading file:", error);
-      setMessage({ type: "error", text: "Error downloading file. Please try again." });
-    }
-  };
+  
 
   if (error) {
     return <div className="alert alert-danger">{error}</div>;
